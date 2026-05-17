@@ -40,12 +40,12 @@ struct MMMWorld(Movable, Copyable):
     var print_counter: UInt16
 
     def __init__(out self, sample_rate: Float64, 
-        block_size: Int, 
-        num_in_chans: Int, 
-        num_out_chans: Int, 
-        osc_buffers_ptr: Optional[UnsafePointer[OscBuffers, MutExternalOrigin]], 
-        windows_ptr: Optional[UnsafePointer[Windows, MutExternalOrigin]], 
-        messenger_manager_ptr: Optional[UnsafePointer[MessengerManager, MutExternalOrigin]]
+        block_size: Int = 128, 
+        num_in_chans: Int = 2, 
+        num_out_chans: Int = 2, 
+        osc_buffers_ptr: Optional[UnsafePointer[OscBuffers, MutExternalOrigin]] = None, 
+        windows_ptr: Optional[UnsafePointer[Windows, MutExternalOrigin]] = None, 
+        messenger_manager_ptr: Optional[UnsafePointer[MessengerManager, MutExternalOrigin]] = None
     ):
         """Initializes the MMMWorld struct.
 
@@ -67,8 +67,6 @@ struct MMMWorld(Movable, Copyable):
         self.sound_in = List[Float64]()
         for _ in range(self.num_in_chans):
             self.sound_in.append(0.0)  # Initialize input buffer with zeros
-
-        osc_buffers_ptr.value()
 
         self.osc_buffers = osc_buffers_ptr
         self.windows = windows_ptr

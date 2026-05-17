@@ -199,7 +199,7 @@ def test_mfcc_paths_consistency() raises:
     comptime num_coeffs: Int = 4
 
     w = alloc[MMMWorld](1) 
-    w.init_pointee_move(MMMWorld(48000.0, 64, 2, 2, None, None, None))
+    w.init_pointee_move(MMMWorld(48000.0))
 
     mags = List[Float64](length=(fft_size // 2) + 1, fill=0.0)
     phases = List[Float64](length=(fft_size // 2) + 1, fill=0.0)
