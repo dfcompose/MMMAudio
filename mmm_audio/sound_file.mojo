@@ -395,6 +395,7 @@ def read_wav_SIMDs[num_channels: Int](file_name: String, header: WavHeader, num_
                 
                 SIMD_sample[ch] = sample_value
                 offset += bytes_per_sample
+            offset += (filenum_channels - read_chans) * bytes_per_sample
             samples.append(SIMD_sample)
     else:
         # definitely need to check this
