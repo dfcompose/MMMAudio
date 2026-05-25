@@ -977,6 +977,7 @@ def Li2[num_chans: Int](x: MFloat[num_chans]) -> MFloat[num_chans]:
 
     return r + s * y * p / q
 
+# TODO: add recursion
 def select_files(dir: String, extensions: List[String] = [".wav",".aif"]) -> List[String]:
     """Select files with specified extensions from a directory and return their paths as a list of strings.
 
