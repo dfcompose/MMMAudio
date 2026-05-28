@@ -1370,6 +1370,7 @@ struct TopNFreqs(FFTProcessable, GetFloat64Featurable):
     var num_peaks: Int
     var sort_by_freq: Bool
     var bin_freq: Float64
+    var top_n_indices: TopNIndices
     
     def get_features(self) -> List[Float64]:
         state = List[Float64]()
@@ -1398,12 +1399,13 @@ struct TopNFreqs(FFTProcessable, GetFloat64Featurable):
         self.num_peaks = num_peaks
         self.sort_by_freq = sort_by_freq
         self.bin_freq = sample_rate / Float64(self.window_size)
+        self.top_n_indices = TopNIndices()
 
     def get_messages(mut self) -> None:
         pass
 
     def next_frame(mut self, mut mags: List[MFloat[]], mut phases: List[MFloat[]]) -> None:
-        top_N = topN_indices(mags, self.num_peaks, self.thresh)
+        ref top_N = self.top_n_indices.process(mags, self.num_peaks,self.thresh)
 
         for i in range(self.num_peaks):
             index = top_N[i]

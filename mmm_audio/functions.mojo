@@ -791,41 +791,53 @@ def rotate_left_inplace[T: Movable & Copyable & ImplicitlyCopyable](mut data: Li
     reverse(data, n, len(data) - 1)  # Reverse second part
     reverse(data, 0, len(data) - 1)  # Reverse entire array
 
-def topN_indices(in_list: List[Float64], N: Int=5, thresh: Float64 = 100.0) -> List[Int]:
-    """Return the indices of the top N largest values in the array.
-    
-    Args:
-        in_list: Input list of Float64 values.
-        N: The number of top values to return.
-        thresh: The minimum value to include in the list.
-    
-    Returns:
-        A list of indices corresponding to the top N peaks in in_list that are above the threshold. Will return 0s if there are not enough peaks above the threshold. 0 is not a valid index.
-    """
-    # sort_list = in_list.copy()
-    top_N = [Int(0) for _ in range(N)]
+struct TopNIndices(Movable,Copyable):
+    var output_indices: List[Int]
+    var ordinal: List[Int]
 
-    def argsort(in_list: List[Float64]) -> List[Int]:
-        var indices = List[Int]()
-        for i in range(len(in_list)):
-            indices.append(i)
+    def __init__(out self):
+        self.output_indices = List[Int]()
+        self.ordinal = List[Int]()
+
+    def process(mut self, in_list: List[Float64], N: Int, thresh: Float64 = 100.0) -> ref[origin_of(self.output_indices)] List[Int]:
+        """Return the indices of the top N largest values in the array.
+        
+        Args:
+            in_list: Input list of Float64 values.
+            N: The number of top indices to return.
+            thresh: The minimum value to include in the list.
+        
+        Returns:
+            A list of indices corresponding to the top N peaks in in_list that are above the threshold. Will return 0s if there are not enough peaks above the threshold. 0 is not a valid index.
+        """
+
+        in_list_len: Int = len(in_list)
+
+        self.ordinal.resize(in_list_len, 0)
+
+        for i in range(in_list_len):
+            self.ordinal[i] = i
 
         def cmp_fn(a: Int, b: Int) capturing -> Bool:
             return in_list[a] > in_list[b]
 
-        sort[cmp_fn](indices)
-        return indices^
+        sort[cmp_fn](self.ordinal)
 
-    indices = argsort(in_list)
-    place_idx = 0
-    i = 0
-    while place_idx < N and in_list[indices[place_idx]] >= thresh and i < (3*N):
-        idx = indices[i]
-        if in_list[idx-1]<in_list[idx] and in_list[idx+1]<in_list[idx]:
-            top_N[place_idx] = idx
-            place_idx += 1
-        i += 1
-    return top_N^
+        self.output_indices.clear()
+
+        place_idx = 0
+        i = 0
+        while place_idx < N and in_list[self.ordinal[place_idx]] >= thresh and i < (3*N):
+            idx = self.ordinal[i]
+            # TODO: this index checking probably shouldn't wrap around.
+            previdx = (idx - 1) % in_list_len
+            nextidx = (idx + 1) % in_list_len
+            if in_list[previdx] < in_list[idx] and in_list[nextidx] < in_list[idx]:
+                # self.output_indices[place_idx] = idx
+                self.output_indices.append(idx)
+                place_idx += 1
+            i += 1
+        return self.output_indices
 
 def find_quadratic_peak(p1: Float64, p2: Float64, p3: Float64) -> Tuple[Float64, Float64]:
     """

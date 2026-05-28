@@ -647,5 +647,29 @@ def test_select_files() raises:
     for expected in expected_files2:
         assert_true(expected in files2, "Test: select_files missing expected file " + expected)
 
+def test_top_n_indices() raises:
+    tpi = TopNIndices()
+    n: Int = 3
+
+    arr: List[Float64] = [0.1, 0.5, 0.3, 0.9, 0.2, 0.8, 0.7]
+    ref result = tpi.process(arr, n, 0.01)
+    expected: List[Int] = [3, 5, 1]
+    assert_equal(result, expected, "Test: top_n_indices function failed")
+
+    arr2: List[Float64] = [0.99, 0.5, 0.3, 0.9, 0.2, 0.8, 0.7]
+    ref result2 = tpi.process(arr2, n, 0.01)
+    expected: List[Int] = [0, 3, 5]
+    assert_equal(result2, expected, "Test: top_n_indices function failed")
+
+    arr3: List[Float64] = [0.1, 0.5, 0.3, 0.9, 0.2, 0.8, 0.99]
+    ref result3 = tpi.process(arr3, n, 0.01)
+    expected: List[Int] = [6, 3, 1]
+    assert_equal(result3, expected, "Test: top_n_indices function failed")
+
+    arr4: List[Float64] = [0.6, 0.1, 0.1, 0.2, 0.1, 0.7, 0.1]
+    ref result4 = tpi.process(arr4, n, 0.3)
+    expected: List[Int] = [5, 0]
+    assert_equal(result4, expected, "Test: top_n_indices function failed")
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
