@@ -9,6 +9,7 @@ struct Windows(Movable, Copyable):
     var sine: List[Float64]
     var kaiser: List[Float64]
     var pan2: List[MFloat[2]]
+    var gaussian: List[Float64]
     comptime size: Int = 2048
     comptime size_f64: Float64 = 2048.0
     comptime mask: Int = 2047 # yep, gotta make sure this is size - 1
@@ -20,6 +21,7 @@ struct Windows(Movable, Copyable):
         self.sine = sine_window(self.size)
         self.kaiser = kaiser_window(self.size, 5.0)
         self.pan2 = pan2_window(256)
+        self.gaussian = gaussian_window(self.size)
 
     def at_phase[window_type: Int,interp: Interp = Interp.none](self, world: World, phase: Float64, prev_phase: Float64 = 0.0) -> Float64:
         """Get window value at given phase (0.0 to 1.0) for specified window type."""
@@ -34,6 +36,8 @@ struct Windows(Movable, Copyable):
             return SpanInterpolator.read[1,interp,True,self.mask](world,self.kaiser, phase * self.size_f64, prev_phase * self.size_f64)
         elif window_type == WindowType.sine:
             return SpanInterpolator.read[1,interp,True,self.mask](world,self.sine, phase * self.size_f64, prev_phase * self.size_f64)
+        elif window_type == WindowType.gaussian:
+            return SpanInterpolator.read[1,interp,True,self.mask](world,self.gaussian, phase * self.size_f64, prev_phase * self.size_f64)
         elif window_type == WindowType.rect:
             return 1.0 
         elif window_type == WindowType.tri:
@@ -70,6 +74,8 @@ struct Windows(Movable, Copyable):
         elif window_type == WindowType.pan2:
             print("Windows.make_window: pan2 window requires MFloat[2] output, use pan2_window() function instead.")
             return List[Float64]()
+        elif window_type == WindowType.gaussian:
+            return gaussian_window(size)
         else:
             print("Windows.make_window: Unsupported window type")
             return List[Float64]()
@@ -251,3 +257,21 @@ def pan2_window(size: Int) -> List[MFloat[2]]:
         var angle = (pi / 2.0) * Float64(i) / Float64(size-1)
         table.append(cos(MFloat[2](angle, (pi / 2.0) - angle)))
     return table^
+
+def gaussian_window(size: Int) -> List[Float64]:
+    """
+    Generate a Gaussian bell curve window of length size.
+
+    Args:
+        size: Length of the window.
+
+    Returns:
+        List containing the gaussian window values.
+    """
+    var window = List[Float64]()
+    for i in range(size):
+        # bell curve with 4 standard deviations
+        a = (Float64(i) - (Float64(size)*0.5)) / (Float64(size)*0.125)
+        b = exp(-1*a*a)
+        window.append(b)
+    return window.copy()
