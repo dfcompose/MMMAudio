@@ -21,26 +21,36 @@ struct Windows(Movable, Copyable):
         self.kaiser = kaiser_window(self.size, 5.0)
         self.pan2 = pan2_window(256)
 
-    def at_phase[window_type: Int,interp: Interp = Interp.none](self, world: World, phase: Float64, prev_phase: Float64 = 0.0) -> Float64:
+    def at_phase[num_chans: Int, window_type: Int, interp: Interp = Interp.none](self, world: World, phase: MFloat[num_chans], prev_phase: MFloat[num_chans] = 0.0) -> MFloat[num_chans]:
         """Get window value at given phase (0.0 to 1.0) for specified window type."""
 
+        out = MFloat[num_chans](0.0)
+
+        
         comptime if window_type == WindowType.hann:
-            return SpanInterpolator.read[1,interp,True,self.mask](world,self.hann, phase * self.size_f64, prev_phase * self.size_f64)
+            comptime for chan in range(num_chans):
+                out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.hann, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.hamming:
-            return SpanInterpolator.read[1,interp,True,self.mask](world,self.hamming, phase * self.size_f64, prev_phase * self.size_f64)
+            comptime for chan in range(num_chans):
+                out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.hamming, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.blackman:
-            return SpanInterpolator.read[1,interp,True,self.mask](world,self.blackman, phase * self.size_f64, prev_phase * self.size_f64)
+            comptime for chan in range(num_chans):
+                out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.blackman, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.kaiser:
-            return SpanInterpolator.read[1,interp,True,self.mask](world,self.kaiser, phase * self.size_f64, prev_phase * self.size_f64)
+            comptime for chan in range(num_chans):
+                out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.kaiser, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.sine:
-            return SpanInterpolator.read[1,interp,True,self.mask](world,self.sine, phase * self.size_f64, prev_phase * self.size_f64)
+            comptime for chan in range(num_chans):
+                out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.sine, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.rect:
-            return 1.0 
+            out = 1.0 
         elif window_type == WindowType.tri:
-            return 1-2*abs(phase - 0.5)
+            out = 1-2*abs(phase - 0.5)
         else:
             print("Windows.at_phase: Unsupported window type")
             return 0.0
+
+        return out
 
     @staticmethod
     def make_window[window_type: Int](size: Int, beta: Float64 = 5.0) -> List[Float64]:

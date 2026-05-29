@@ -20,10 +20,6 @@ struct OscVoice(PolyObject):
     def set_gate(mut self, gate: Bool):
         self.gate = gate
 
-    # necessary to ensure a fresh env when the voice is copied by Poly
-    def reset_env(mut self):
-        self.env = ASREnv(self.world)
-
     def __init__(out self, world: World, name_space: String = ""):
         self.osc = Osc[1,Interp.sinc,0](world)
         self.tri = LFOsc(world)
