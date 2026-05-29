@@ -17,9 +17,9 @@ struct PAF[
 
     var world: World
 
-    var phasor: Phasor[Self.num_chans, Self.os_index]
-    var cos1: Osc[Self.num_chans, Self.interp, Self.os_index]
-    var cos2: Osc[Self.num_chans, Self.interp, Self.os_index]
+    var phasor: Phasor[Self.num_chans]
+    var cos1: Osc[Self.num_chans, Self.interp]
+    var cos2: Osc[Self.num_chans, Self.interp]
     var lag: Lag[Self.num_chans]
     var env: Env[]
     var env_buffer: SIMDBuffer[1]
@@ -38,9 +38,11 @@ struct PAF[
         """
         self.world = world
 
-        self.phasor = Phasor[Self.num_chans, Self.os_index](self.world)
-        self.cos1 = Osc[Self.num_chans, Self.interp, Self.os_index](self.world)
-        self.cos2 = Osc[Self.num_chans, Self.interp, Self.os_index](self.world)
+        self.phasor = Phasor[Self.num_chans](self.world)
+        self.phasor.freq_mul = self.world[].os_multiplier[Self.os_index] / self.world[].sample_rate
+        
+        self.cos1 = Osc[Self.num_chans, Self.interp](self.world)
+        self.cos2 = Osc[Self.num_chans, Self.interp](self.world)
         self.lag = Lag[Self.num_chans](self.world)
         self.env = Env[](self.world)
         self.env_buffer = Env.get_env_buffer[1, win_type=WindowType.gaussian](

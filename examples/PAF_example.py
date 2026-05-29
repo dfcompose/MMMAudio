@@ -10,7 +10,6 @@ mmm_audio.send_float("bandwidth", 800)
 mmm_audio.send_float("center_freq", rrand(10, 2000))
 mmm_audio.send_float("bandwidth", rrand(10, 2000))
 
-mmm_audio.plot(4096)
 
 # repetetive random sequence
 async def loop():
