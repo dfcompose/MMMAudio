@@ -397,7 +397,6 @@ struct GrainAll(GrainObject):
     def check_active(mut self) -> Bool:
         return self.active
 
-
     def set_trigger(mut self, trigger: Bool):
         self.trigger = trigger
         if trigger:
@@ -709,7 +708,7 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
         return out * gain
 
     @always_inline
-    def next_all[num_chans: Int, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_chans], gain: Float64 = 1.0, width: Float64 = 2.0, orientation: Float64 = 0.5) -> MFloat[num_chans]:
+    def next_all[num_chans: Int, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_chans], gain: Float64 = 1.0) -> MFloat[num_chans]:
         """Generate the next set of grains. Depending on num_out_chans, will either pan a mono signal out 2 channels or a stereo signal out 2 channels.
         
         Parameters:
@@ -719,8 +718,6 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
         Args:
             buffer: Audio buffer containing the source sound.
             gain: Amplitude scaling factor for the output of the grains.
-            width: The width of the panning for the azimuth panning. Higher values will make the panning more extreme, while lower values will make it more subtle (default: 2.0).
-            orientation: The orientation of the panning for the azimuth panning.
 
         Returns:
             Output samples for left and right channels as a SIMD vector.
