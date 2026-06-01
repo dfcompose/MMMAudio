@@ -68,7 +68,7 @@ struct SubtractiveTemplate(Movable, Copyable):
         self.m.update("lfo_freq", self.lfo_freq)
         # self.m.update("fold_amt", self.fold_amt)
 
-        sig = self.saw.next(self.freq,osc_type=OscType.saw)
+        sig = self.saw.next[OscType.saw](self.freq)
         # sig = self.wavefolder.next(sig, self.fold_amt)
 
         lfo = self.lfo.next(self.lfo_freq)

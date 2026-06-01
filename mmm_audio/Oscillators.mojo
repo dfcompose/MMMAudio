@@ -186,21 +186,22 @@ struct Osc[num_chans: Int = 1, interp: Interp = Interp.linear, os_index: Int = 0
         self.last_phase = MFloat[self.num_chans](0.0)
 
     @always_inline
-    def next(
+    def next[osc_type: OscType = OscType.sine](
             mut self: Osc, 
             freq: MFloat[self.num_chans] = MFloat[self.num_chans](100.0), 
             phase_offset: MFloat[self.num_chans] = MFloat[self.num_chans](0.0), 
-            trig: Bool = False, 
-            osc_type: MInt[self.num_chans] = MInt[self.num_chans](OscType.sine)
+            trig: Bool = False
         ) -> MFloat[self.num_chans]:
         """
         Generate the next oscillator sample on a single waveform type. All inputs are SIMD types except trig, which is a scalar. This means that an oscillator can have num_chans different instances, each with its own frequency, phase offset, and waveform type, but they will all share the same trigger signal.
+
+        Parameters:
+            osc_type: Type of waveform. See the OscType struct for options (default is OscType.sine).
 
         Args:
             freq: Frequency of the oscillator in Hz.
             phase_offset: Offsets the phase of the oscillator (0 to 1).
             trig: Trigger signal to reset the phase when switching from False to True (default is 0.0).
-            osc_type: Type of waveform. See the OscType struct for options (default is OscType.sine). Best if provided as OscType.sine, OscType.triangle, etc.
 
         Returns:
             The next sample of the oscillator output.
@@ -208,6 +209,8 @@ struct Osc[num_chans: Int = 1, interp: Interp = Interp.linear, os_index: Int = 0
         var trig_mask = MBool[self.num_chans](fill=trig)
             
         out = MFloat[self.num_chans](0.0)
+
+        comptime osc_type_int = Int(osc_type)
 
         comptime if Self.os_index == 0:
             
@@ -221,7 +224,7 @@ struct Osc[num_chans: Int = 1, interp: Interp = Interp.linear, os_index: Int = 0
                         mask=OscBuffersMask
                     ](
                         world = self.world,
-                        data=temp[].buffers[osc_type[chan]],
+                        data=temp[].buffers[Int(osc_type)],
                         f_idx=phase[chan] * Float64(OscBuffersSize),
                         prev_f_idx=self.last_phase[chan] * Float64(OscBuffersSize)
                     )
@@ -242,7 +245,7 @@ struct Osc[num_chans: Int = 1, interp: Interp = Interp.linear, os_index: Int = 0
                         mask=OscBuffersMask
                     ](
                         world = self.world,
-                        data=temp[].buffers[osc_type[chan]],
+                        data=temp[].buffers[Int(osc_type)],
                         f_idx=phase[chan] * Float64(OscBuffersSize),
                         prev_f_idx=self.last_phase[chan] * Float64(OscBuffersSize)
                     )
@@ -274,49 +277,48 @@ struct Osc[num_chans: Int = 1, interp: Interp = Interp.linear, os_index: Int = 0
             prev_f_idx=last_phase * Float64(OscBuffersSize)
         )
 
-    @always_inline
-    def next_basic_waveforms(
-            mut self, 
-            freq: MFloat[self.num_chans] = MFloat[self.num_chans](100.0), 
-            phase_offset: MFloat[self.num_chans] = MFloat[self.num_chans](0.0), 
-            trig: Bool = False, 
-            osc_types: List[MInt[1]] = [OscType.sine,OscType.triangle,OscType.saw,OscType.square], 
-            osc_frac: MFloat[self.num_chans] = MFloat[self.num_chans](0.0)
-        ) -> MFloat[self.num_chans]:
-        """Variable Wavetable Oscillator using built-in waveforms. Generates the next oscillator sample on a variable 
-        waveform where the output is interpolated between 
-        different waveform types. All inputs are SIMD types except trig and osc_types, which are scalar. This 
-        means that an oscillator can have num_chans different instances, each with its own frequency, phase offset, 
-        and waveform type, but they will all share the same trigger signal and the same list of waveform types 
-        to interpolate between.
-        
+    @always_inline 
+    def next_basic_waveforms[
+        *osc_types: OscType
+    ](
+        mut self, 
+        freq: MFloat[self.num_chans] = MFloat[self.num_chans](100.0), 
+        phase_offset: MFloat[self.num_chans] = MFloat[self.num_chans](0.0), 
+        trig: Bool = False, 
+        osc_frac: MFloat[self.num_chans] = MFloat[self.num_chans](0.0) 
+    ) -> MFloat[self.num_chans]:
+        """Variable Wavetable Oscillator using built-in waveforms. Generates the next oscillator sample on a variable waveform where the output is interpolated between different waveform types.
+
+        Parameters:
+            osc_types: VariadicList of waveform types (OscType) to interpolate between. See the OscType struct for options. This should be indicated as a compile-time parameter pack, e.g. next_basic_waveforms[OscType.sine, OscType.triangle]. This cannot be left empty or it will cause a compile error.
+
         Args:
             freq: Frequency of the oscillator in Hz.
             phase_offset: Offsets the phase of the oscillator (default is 0.0).
             trig: Trigger signal to reset the phase when switching from False to True (default is 0.0).
-            osc_types: List of waveform types ([OscType](MMMWorld.md/#struct-osctype)) to interpolate between (default is [OscType.sine,OscType.triangle,OscType.saw,OscType.square].
             osc_frac: Fractional index for wavetable interpolation. Values are between 0.0 and 1.0. 0.0 corresponds to the first waveform in the osc_types list, 1.0 corresponds to the last waveform in the osc_types list, and values in between interpolate linearly between all waveforms in the list.
-        
-        Returns:
-            The next sample of the oscillator output.
         """
-        var trig_mask = MBool[self.num_chans](fill=trig)
-
-        var max_osc_frac = len(osc_types)-1
-
-        var scaled_osc_frac = Float64(max_osc_frac) * min(osc_frac, 1.0) #can't use a modulus here
-
-        var osc_type0: MInt[self.num_chans] = MInt[self.num_chans](scaled_osc_frac)
-        var osc_type1 = MInt[self.num_chans](osc_type0 + 1)
-        osc_type0 = clip(osc_type0, 0,  MInt[1](max_osc_frac))
-        osc_type1 = clip(osc_type1, 0, MInt[1](max_osc_frac))
         
-        comptime for i in range(self.num_chans):
-            osc_type0[i] = osc_types[osc_type0[i]]
-            osc_type1[i] = osc_types[osc_type1[i]]
+        # 2. Get the length of the parameter pack at compile time
+        comptime num_osc_types = len(osc_types)
+        comptime max_osc_frac = num_osc_types - 1
+        
+        var trig_mask = MBool[self.num_chans](fill=trig) 
+        var scaled_osc_frac = Float64(max_osc_frac) * min(osc_frac, 1.0) 
+        
+        var osc_type0: MInt[self.num_chans] = MInt[self.num_chans](scaled_osc_frac) 
+        var osc_type1 = MInt[self.num_chans](osc_type0 + 1) 
+        
+        osc_type0 = clip(osc_type0, 0, MInt[1](max_osc_frac)) 
+        osc_type1 = clip(osc_type1, 0, MInt[1](max_osc_frac)) 
 
-        osc_frac_interp = scaled_osc_frac - floor(scaled_osc_frac)
-        var out_sample = MFloat[self.num_chans](0.0)
+        # 4. Map the runtime vector indexes using the compile-time lookup array
+        for i in range(self.num_chans): 
+            osc_type0[i] = MInt[1](osc_types[Int(osc_type0[i])]._value) 
+            osc_type1[i] = MInt[1](osc_types[Int(osc_type1[i])]._value) 
+            
+        osc_frac_interp = scaled_osc_frac - floor(scaled_osc_frac) 
+        var out_sample = MFloat[self.num_chans](0.0) 
 
         comptime if Self.os_index == 0:
             var phase = self.phasor.next(freq, phase_offset, trig_mask)
@@ -334,7 +336,7 @@ struct Osc[num_chans: Int = 1, interp: Interp = Interp.linear, os_index: Int = 0
                 self.oversampling.add_sample(out_sample)
                 self.last_phase = phase
             return self.oversampling.get_sample()
-    
+   
     @always_inline
     def next_vwt(
             mut self: Osc, 
@@ -519,11 +521,11 @@ struct OscBank[num: Int](Movable, Copyable):
         if simd_index < Self.num_simd:
             self.freqs[simd_index][lane_index] = freq
 
-    def next(mut self, osc_type: MInt[1] = MInt[1](OscType.sine)) -> Float64:
+    def next[osc_type: OscType = OscType.sine](mut self) -> Float64:
         """Process a Span (List or InlineArray) of Floats through the lags. The length of vals should be equal to num_lags."""
         out = MFloat[Self.simd_width](0.0)
         for i in range(Self.num_simd):
-            out += self.oscs[i].next(self.freqs[i], osc_type=osc_type)
+            out += self.oscs[i].next[osc_type=osc_type](self.freqs[i])
         return out.reduce_add() / Float64(Self.num) 
 
 struct LFOsc[num_chans: Int = 1] (Movable, Copyable):
@@ -550,7 +552,7 @@ struct LFOsc[num_chans: Int = 1] (Movable, Copyable):
         self.world = world
 
     @always_inline
-    def next[osc_type: MInt[1]](mut self, freq: MFloat[self.num_chans] = 100.0, phase_offset: MFloat[self.num_chans] = 0.0, trig: Bool = False) -> MFloat[self.num_chans]:
+    def next[osc_type: OscType = OscType.saw](mut self, freq: MFloat[self.num_chans] = 100.0, phase_offset: MFloat[self.num_chans] = 0.0, trig: Bool = False) -> MFloat[self.num_chans]:
         """Generate the next sawtooth wave sample.
         
         Args:

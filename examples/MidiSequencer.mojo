@@ -40,10 +40,10 @@ struct TrigSynthVoice(PolyObject):
             return 0.0
         else:
             bend_freq = self.note[0] * self.bend_mul
-            var mod_value = self.mod.next(bend_freq * 1.5, osc_type=OscType.sine)  
+            var mod_value = self.mod.next(bend_freq * 1.5)  
             var env = self.env.next(self.trigger)  
             var mod_mult = env * 0.5 * linlin(bend_freq, 1000, 4000, 1, 0) #decrease the mod amount as freq increases
-            var car_value = self.car.next(bend_freq, mod_value * mod_mult, osc_type=OscType.sine)  
+            var car_value = self.car.next(bend_freq, mod_value * mod_mult)  
 
             car_value += self.sub.next(bend_freq * 0.5) 
             car_value = car_value * 0.1 * env * self.note[1]  

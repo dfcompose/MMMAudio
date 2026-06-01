@@ -20,8 +20,8 @@ struct Default_Synth(Movable, Copyable):
         self.messenger.update("freq", self.freq) 
         self.messenger.update("pan", self.pan) 
 
-        osc = self.osc.next(self.freq, osc_type=OscType.saw) 
-        osc = self.filt.next[filter_type=SVFModes.lowpass](osc, 2000.0, 1.0)
+        osc = self.osc.next[OscType.saw](self.freq)
+        osc = self.filt.next[SVFModes.lowpass](osc, 2000.0, 1.0)
         osc2 = pan2(osc, self.pan)
 
         return osc2 * 0.1

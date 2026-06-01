@@ -31,7 +31,8 @@ struct CustomAnalysis[window_size: Int = 1024](BufferedProcessable):
 
 struct AnalysisExample(Movable, Copyable):
     var world: World
-    var osc: Osc[2]
+    var osc: Osc[]
+    var osc2: Osc[]
     var buffer: Buffer
     var playBuf: Play
     var freq: Float64
@@ -41,7 +42,8 @@ struct AnalysisExample(Movable, Copyable):
 
     def __init__(out self, world: World):
         self.world = world
-        self.osc = Osc[2](self.world)
+        self.osc = Osc[](self.world)
+        self.osc2 = Osc[](self.world)
         self.buffer = Buffer.load("resources/Shiverer.wav")
         self.playBuf = Play(self.world)
         self.analyzer = BufferedProcess[CustomAnalysis[1024],output=False,input_window_shape=WindowType.rect](self.world, CustomAnalysis[1024](self.world), window_size=1024, hop_size=512)
@@ -54,11 +56,8 @@ struct AnalysisExample(Movable, Copyable):
         self.m.update("freq", self.freq) 
         self.m.update("which", self.which) 
 
-        oscs = self.osc.next(self.freq,0,False,[OscType.sine, OscType.saw])
+        oscs = MFloat[2](self.osc.next[OscType.sine](self.freq, 0, False), self.osc.next[OscType.saw](self.freq, 0, False))
         flute = self.playBuf.next(self.buffer)
-
-        # sig_list = [oscs[0], oscs[1], flute]
-        # sig = select(self.which, sig_list)
         
         sig = select(self.which, oscs[0], oscs[1], flute)
         

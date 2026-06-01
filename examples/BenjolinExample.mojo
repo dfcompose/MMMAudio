@@ -98,10 +98,10 @@ struct Benjolin(Movable, Copyable):
         self.m.update("outSignalL", self.outSignalL) 
         self.m.update("outSignalR", self.outSignalR) 
         
-        tri1 = self.tri1.next((self.rungler*self.rungler1)+self.freq1,osc_type=3)
-        tri2 = self.tri2.next((self.rungler*self.rungler2)+self.freq2,osc_type=3)
-        pulse1 = self.pulse1.next((self.rungler*self.rungler1)+self.freq1,osc_type=2)
-        pulse2 = self.pulse2.next((self.rungler*self.rungler2)+self.freq2,osc_type=2)
+        tri1 = self.tri1.next[OscType.square]((self.rungler*self.rungler1)+self.freq1)
+        tri2 = self.tri2.next[OscType.square]((self.rungler*self.rungler2)+self.freq2)
+        pulse1 = self.pulse1.next[OscType.saw]((self.rungler*self.rungler1)+self.freq1)
+        pulse2 = self.pulse2.next[OscType.saw]((self.rungler*self.rungler2)+self.freq2)
 
         pwm = 1.0 if (tri1 + tri2) > 0.0 else 0.0
 
