@@ -146,21 +146,25 @@ struct Poly(Movable, Copyable):
                 if free_voice != -1:
                     call_back(poly_objects[free_voice], val)
 
-    def next_gate[T: PolyObject](mut self, mut poly_objects: List[T], gate_sigs: List[Bool]):
+    def next_gate[T: PolyObject](mut self, mut poly_objects: List[T], gate_sigs: List[Bool]) -> Int:
         """This function is designed to be used with polyphonic synths that have gated controls that are signals.
 
         Args:
             poly_objects: A list of structs conforming to the PolyObject trait. This function calls the set_gate function for each PolyObject to open and close the gates as needed.
             gate_sigs: A list of boolean signals that control the gates of the voices. This number should be less than or equal to the number of voices in the Poly. Remember that even if a gate is closed that does not mean the voice is free. The voice is free when the envelope or Line of the voice is finished and the check_active function returns False again. Plan the number of gates and voices accordingly.
+        
+        Return:
+            The index of the voice whose gate was opened, or -1 if no voice was opened.
         """
         self._reset[audio_control = 0](poly_objects)
         for i in range(len(gate_sigs)):
             changed = self.changes[i].next(gate_sigs[i])
             if changed:
                 if gate_sigs[i]: # if the signal went from False to True, trigger the note on for that gate
-                    _ = self._find_voice_and_open_gate(poly_objects, changed, Int(i))
+                    return self._find_voice_and_open_gate(poly_objects, changed, Int(i))
                 else:
                     _ = self._close_gate(poly_objects, Int(i))
+        return -1
 
     def next_mgate[
         T: PolyObject,
