@@ -990,3 +990,19 @@ def select_files(dir: String, extensions: List[String] = [".wav",".aif"]) -> Lis
         return paths^
     except e:
         abort("select_files: " + String(e))
+
+@always_inline  
+def array_to_mfloat[simd_out_size: Int, array: InlineArray[Float64, _], fill_with: Float64 = 0.0]() -> MFloat[simd_out_size]:
+    """
+    Creates an MFloat 2 vector of size 2^n from a given array. If the given array is not a power of two the additional vector values will be initialized to 0.
+    
+    Parameters:
+        simd_out_size: The size of the MFloat vector to be returned. Must be a power of two.
+        array: The source array. Its length must be less than or equal to simd_out_size.
+        fill_with: The value to fill in the remaining elements if array length is less than simd_out_size (default is 0.0).
+    """
+    
+    new_vec = MFloat[simd_out_size](fill_with)
+    for i in range(len(array)):
+        new_vec[i] = array[i]
+    return new_vec

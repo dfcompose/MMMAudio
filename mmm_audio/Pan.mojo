@@ -317,14 +317,22 @@ struct SplayN[num_channels: Int = 2, pan_points: Int = 128](Movable, Copyable):
 
 
 @always_inline
-def dbap2D[simd_out_size: Int = 4, num_speakers: Int = 4, speaker_pos: InlineArray[MFloat[2], num_speakers] = [MFloat[2](0, 0)], weights: InlineArray[Float64, num_speakers] = 0](sample: Float64, pos: MFloat[2], blur: Float64 = 0.1, rolloff: Float64 = 6) -> MFloat[simd_out_size]:
+def dbap2D[
+    num_speakers: Int, 
+    speaker_pos: InlineArray[MFloat[2], num_speakers],
+    weights: InlineArray[Float64, num_speakers]]
+    (
+        sample: Float64, 
+        pos: MFloat[2], 
+        blur: Float64 = 0.1, 
+        rolloff: Float64 = 6
+    ) -> MFloat[next_power_of_two(num_speakers)]:
     """
     Implements DBAP (Distance Based Amplitude Panning). Takes in a mono signal and produces a signal of arbitrary channel size.
     For more on DBAP see the paper written by Trond Lossius, Pascal Baltazar, and Theo de la Hague.
     https://jamoma.org/publications/attachments/icmc2009-dbap-rev1.pdf .
 
     Parameters:
-        simd_out_size: The size of the MFloat vector out. Must be a power of 2.
         num_speakers: The number of speakers as an integer. Must be <= simd_out_size.
         speaker_pos: The speaker positions as an InlineArray of MFloat[2] x/y pairs in meters.
         weights:  An InlineArray of Float64s defining speaker weights for DBAP.
@@ -338,7 +346,7 @@ def dbap2D[simd_out_size: Int = 4, num_speakers: Int = 4, speaker_pos: InlineArr
     Returns:
         MFloat[simd_out_size]: The panned output sample for each speaker.
     """
-    # comptime simd_out_size = next_power_of_two(num_speakers) currently this is causing an error.
+    comptime simd_out_size = next_power_of_two(num_speakers)
     comptime vec_weights = array_to_mfloat[simd_out_size, weights]()
     
     var blur_sq = pow(blur, 2)
@@ -356,26 +364,28 @@ def dbap2D[simd_out_size: Int = 4, num_speakers: Int = 4, speaker_pos: InlineArr
         # y = pow(speaker[1] - pos[1], 2)
         dists[i] = sqrt(xy.reduce_add() + blur_sq)  
 
-    k = 1/((vec_weights * vec_weights) / pow(dists, 2 * a)).reduce_add()
+    comptime num_pairs = num_speakers // 2
+    two_a = 2 * a
+    denom = 0.0
+    for i in range(num_pairs):
+        var w = MFloat[2](vec_weights[i*2], vec_weights[i*2+1])
+        var d = MFloat[2](dists[i*2], dists[i*2+1])
 
-    amps = (k * vec_weights) / pow(dists, a)
-    amps *= sample
+        denom += ((w * w) / pow(d, two_a)).reduce_add()
 
-    return amps
+    comptime if num_speakers % 2 != 0:
+        denom += (vec_weights[num_speakers - 1] * vec_weights[num_speakers - 1]) / pow(dists[num_speakers - 1], two_a)
 
-@always_inline  
-def array_to_mfloat[simd_out_size: Int = 4, array: InlineArray[Float64, _] = 0]() -> MFloat[simd_out_size]:
-    """
-    Creates an MFloat 2 vector of size 2^n from a given array. If the given array is not a power of two the additional vector values will be initialized to 0.
-    
-    Parameters:
-        simd_out_size: The size of the MFloat vector to be returned. Must be a power of two.
-        array: The source array. Its length must be less than or equal two simd_out_size.
-    
-    """
-    
-    new_vec = MFloat[simd_out_size](0)
-    for i in range(len(array)):
-        new_vec[i] = array[i]
-    return new_vec
+    k = 1 / sqrt(denom)
+
+    out = MFloat[simd_out_size](0.0)
+    for i in range(num_pairs):
+        temp = k * MFloat[2](vec_weights[i*2], vec_weights[i*2+1]) / pow(MFloat[2](dists[i*2], dists[i*2+1]), a) * sample
+        out[i*2] = temp[0]
+        out[i*2+1] = temp[1]
+    comptime if num_speakers % 2 != 0:
+        out[num_speakers - 1] = k * vec_weights[num_speakers - 1] / pow(dists[num_speakers - 1], a) * sample
+
+    return out
+
 
