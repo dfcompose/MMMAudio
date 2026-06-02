@@ -359,9 +359,8 @@ def dbap2D[
  
     # Calculates the k coefficient and gets distances for every speaker from the source
     for i in range(num_speakers):
-        speaker = speaker_pos[i]
-        xy = (speaker - pos) * (speaker - pos)
-        # y = pow(speaker[1] - pos[1], 2)
+        speaker = speaker_pos[i] - pos
+        xy = speaker * speaker
         dists[i] = sqrt(xy.reduce_add() + blur_sq)  
 
     comptime num_pairs = num_speakers // 2
