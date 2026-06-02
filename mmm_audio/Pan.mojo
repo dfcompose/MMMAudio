@@ -200,7 +200,7 @@ def pan_az[num_speakers: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0
         MFloat[next_power_of_two(num_speakers)]: The panned output sample for each speaker.
     """
 
-    # comptime simd_out_size = next_power_of_two(num_speakers) # This currently throws an error
+    comptime simd_out_size = next_power_of_two(num_speakers)
     comptime num_simd_pairs = num_speakers // 2 + (num_speakers % 2)
     comptime rwidth = 1.0 / width
     comptime frange = Float64(num_speakers) * rwidth
@@ -210,7 +210,7 @@ def pan_az[num_speakers: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0
     comptime aligned_pos_const = width * 0.5 + orientation
     var constant = pan * 2.0 * aligned_pos_fac + aligned_pos_const
 
-    out = MFloat[next_power_of_two(num_speakers)](0.0)
+    out = MFloat[simd_out_size](0.0)
 
     # this needs to be checked
     for i in range(num_simd_pairs):
