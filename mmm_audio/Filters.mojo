@@ -728,7 +728,7 @@ struct VAOnePole[num_chans: Int = 1](Movable, Copyable):
         """
         return input - self.lpf(input, freq)
 
-struct VAMoogLadder[num_chans: Int = 1, os_index: Int = 0](Movable, Copyable):
+struct VAMoogLadder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.none](Movable, Copyable):
     """Virtual Analog Moog Ladder Filter.
     
     Implementation based on the Virtual Analog design by Vadim Zavalishin in 
@@ -738,7 +738,7 @@ struct VAMoogLadder[num_chans: Int = 1, os_index: Int = 0](Movable, Copyable):
 
     Parameters:
         num_chans: Number of channels to process in parallel.
-        os_index: [oversampling](Oversampling.md) factor as a power of two (0 = no oversampling, 1 = 2x, 2 = 4x, etc).
+        ov_samp: [oversampling](Oversampling.md) factor as a power of two (0 = no oversampling, 1 = 2x, 2 = 4x, etc).
     """
     var nyquist: Float64
     var step_val: Float64
@@ -746,8 +746,8 @@ struct VAMoogLadder[num_chans: Int = 1, os_index: Int = 0](Movable, Copyable):
     var last_2: MFloat[Self.num_chans]
     var last_3: MFloat[Self.num_chans]
     var last_4: MFloat[Self.num_chans]
-    var oversampling: Oversampling[Self.num_chans, 2 ** Self.os_index]
-    var upsampler: Upsampler[Self.num_chans, 2 ** Self.os_index]
+    var oversampling: Oversampling[Self.num_chans, Self.ov_samp]
+    var upsampler: Upsampler[Self.num_chans, Self.ov_samp]
 
     def __init__(out self, world: World):
         """Initialize the VAMoogLadder filter.
@@ -755,14 +755,14 @@ struct VAMoogLadder[num_chans: Int = 1, os_index: Int = 0](Movable, Copyable):
         Args:
             world: Pointer to the MMMWorld.
         """
-        self.nyquist = world[].sample_rate * 0.5 * (2.0 ** Self.os_index)
+        self.nyquist = world[].sample_rate * 0.5 * Float64(Self.ov_samp.times)
         self.step_val = 1.0 / self.nyquist
         self.last_1 = MFloat[Self.num_chans](0.0)
         self.last_2 = MFloat[Self.num_chans](0.0)
         self.last_3 = MFloat[Self.num_chans](0.0)
         self.last_4 = MFloat[Self.num_chans](0.0)
-        self.oversampling = Oversampling[Self.num_chans, 2 ** Self.os_index](world)
-        self.upsampler = Upsampler[Self.num_chans, 2 ** Self.os_index](world)
+        self.oversampling = Oversampling[Self.num_chans, Self.ov_samp](world)
+        self.upsampler = Upsampler[Self.num_chans, Self.ov_samp](world)
 
     @doc_hidden
     @always_inline
@@ -782,8 +782,7 @@ struct VAMoogLadder[num_chans: Int = 1, os_index: Int = 0](Movable, Copyable):
         # k is the feedback coefficient of the entire circuit
         var k = 4.0 * res 
 
-        comptime os_factor = Float64(2 ** Self.os_index)
-        var compensation = 1.0 + k * os_factor * 0.25
+        var compensation = 1.0 + k * Float64(Self.ov_samp.times) * 0.25
         
         var omegaWarp = tan(pi * cf * self.step_val)
         var g = omegaWarp / (1.0 + omegaWarp)
@@ -841,17 +840,17 @@ struct VAMoogLadder[num_chans: Int = 1, os_index: Int = 0](Movable, Copyable):
             The next sample of the filtered output.
         """
         
-        comptime if Self.os_index == 0:
+        comptime if Self.ov_samp == TimesOversampling.none:
             return self.lp4(sig, freq, res)
         else:
-            comptime times_oversampling = 2 ** Self.os_index
 
-            comptime for i in range(times_oversampling):
+
+            comptime for i in range(Self.ov_samp.times):
                 # upsample the input
                 sig2 = self.upsampler.next(sig, i)
 
                 var lp4 = self.lp4(sig2, freq, res)
-                comptime if Self.os_index == 0:
+                comptime if Self.ov_samp == TimesOversampling.none:
                     return lp4
                 else:
                     self.oversampling.add_sample(lp4)
