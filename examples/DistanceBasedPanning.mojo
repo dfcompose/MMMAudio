@@ -14,7 +14,7 @@ struct DbapSynth(Movable, Copyable):
         self.dust = Dust[1](world)
         self.filt = Reson[1](world)
         self.messenger = Messenger(self.world)
-        self.pos = [0, 0]
+        self.pos = MFloat[2](0.0, 0.0)
 
     def next(mut self) -> MFloat[4]:
         # self.messenger.update("pos", self.pos)
