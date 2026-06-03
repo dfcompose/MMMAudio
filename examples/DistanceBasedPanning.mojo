@@ -39,7 +39,7 @@ struct DbapSynth(Movable, Copyable):
         # uncomment below for use the phase of the Dust oscillator instead of the impulse
         # out = self.dust.get_phase()
 
-        return out
+        return MFloat[4](out[0], out[1], out[2], out[4])
 
 # THE GRAPH
 
