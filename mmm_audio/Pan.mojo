@@ -335,43 +335,44 @@ def dbap2D[
     Parameters:
         num_speakers: The number of speakers as an integer.
         speaker_pos: The speaker positions as an InlineArray of MFloat[2] x/y pairs in meters from a center position.
-        weights:  An InlineArray of Float64s (between 0.0 and 1.0) defining speaker weights for DBAP. Speaker weights allow for a source to be restricted to a subset of speakers. Speaker weights of 0.0 will disallow a source from playing through that speaker.
+        weights: An InlineArray of Float64s (between 0.0 and 1.0) defining speaker weights for DBAP. Speaker weights allow for a source to be restricted to a subset of speakers. Speaker weights of 0.0 will disallow a source from playing through that speaker.
 
     Args:
         sample: Mono input sample.
         pos: X/Y position of the source in meters as an MFloat[2].
-        blur: Blur between speakers. Values > 0 spread the source to more speakers.
-        rolloff: The dB rolloff (defaults to 6db).
+        blur: Blurs the source, causing it to gravitate to one speaker less. Values must be greater than or equal to 0.
+        rolloff: The dB amplitude rolloff.
     
     Returns:
         MFloat[simd_out_size]: The panned output sample for each speaker.
     """
-    @parameter
-    def variance_of_dists() -> Float64:
-        var accum : Float64 = 0.0 
-        var dists : InlineArray[Float64, num_speakers] = [0.0]
-        for i in range(num_speakers):
-            dist = speaker_pos[i] * speaker_pos[i]
-            dist_from_center = sqrt(dist.reduce_add())
+    # @parameter
+    # def variance_of_dists() -> Float64:
+    #     var accum : Float64 = 0.0 
+    #     var dists : InlineArray[Float64, num_speakers] = [0.0]
+    #     for i in range(num_speakers):
+    #         dist = speaker_pos[i] * speaker_pos[i]
+    #         dist_from_center = sqrt(dist.reduce_add())
 
-            dists[i] = dist_from_center
-            accum += dist_from_center
+    #         dists[i] = dist_from_center
+    #         accum += dist_from_center
 
-        var mean : Float64 = accum // Float64(num_speakers)
-        var variance_accum : Float64 = 0.0
-        for speaker in dists:
-            variance_accum += pow(speaker - mean, 2)
+    #     var mean : Float64 = accum // Float64(num_speakers)
+    #     var variance_accum : Float64 = 0.0
+    #     for speaker in dists:
+    #         variance_accum += pow(speaker - mean, 2)
 
 
-        return variance_accum // Float64(num_speakers - 1)
+    #     return variance_accum // Float64(num_speakers - 1)
+    
+   
+    
+    # comptime speaker_variance = variance_of_dists()
     
     comptime simd_out_size = next_power_of_two(num_speakers)
     comptime vec_weights = array_to_mfloat[simd_out_size, weights]()
-    
-    comptime speaker_variance = variance_of_dists()
-    
-    
-    var blur_sq = pow(max(0.00001, blur) * speaker_variance, 2)
+    # var blur_sq = pow(max(0.00001, blur) * speaker_variance, 2)
+    var blur_sq = pow(max(0.00001, blur), 2)
 
     # Calculates the a coefficient given a rolloff in dB
     var a = rolloff/6.02059991328
