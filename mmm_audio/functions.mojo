@@ -345,6 +345,9 @@ def linmap[num_chans: Int](x: MFloat[num_chans], *points: Tuple[MFloat[num_chans
 
     The function takes a variable number of (input, output) pairs and linearly maps the input `x` to the corresponding output value based on which segment of the input range `x` falls into. If `x` is outside the range of the provided points, it will be clamped to the nearest segment.
 
+    Parameters:
+        num_chans: Size of the SIMD vector. This parameter is inferred by the values passed to the function.
+
     Args:
         x: The input value to be mapped.
         points: A variable number of (input, output) pairs that define the mapping. For example, `linmap(x, (0, 0), (0.5, 1), (1, 0))` defines a mapping where 0 maps to 0, 0.5 maps to 1, and 1 maps to 0.
