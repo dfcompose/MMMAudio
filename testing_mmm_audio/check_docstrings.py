@@ -1,12 +1,14 @@
 import sys
 import re
 import subprocess
+import os
 
 def check_directory_for_docstrings(dir: str) -> list[str]:
     print("🔍 Interactive Docstring Checker")
     print("-" * 40)
 
-    full_command = ["mojo", "doc", "--diagnose-missing-doc-strings", dir, "-o", "test.json"]
+    tmpjson = "tmp.json"
+    full_command = ["mojo", "doc", "--diagnose-missing-doc-strings", dir, "-o", tmpjson]
     
     print(f"\n🚀 Running: {' '.join(full_command)}\n")
     
@@ -15,6 +17,8 @@ def check_directory_for_docstrings(dir: str) -> list[str]:
         capture_output=True,
         text=True,
     )
+
+    os.remove(tmpjson)
 
     # Combine stdout and stderr to ensure we don't miss anything
     all_output = result.stdout + result.stderr
