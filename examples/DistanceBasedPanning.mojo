@@ -19,7 +19,7 @@ struct DbapSynth(Movable, Copyable):
     def next(mut self) -> MFloat[4]:
         
         self.pos[0] = linlin(self.world[].mouse_x, 0.0, 1.0, -1.0, 1.0)
-        self.pos[1] = linlin(self.world[].mouse_y, 0.0, 1.0, -1.0, 1.0)
+        self.pos[1] = linlin(self.world[].mouse_y, 0.0, 1.0, 1.0, -1.0)
         comptime speakers : InlineArray[MFloat[2], 4] = [
             MFloat[2](-1, 1),
             MFloat[2](1, 1),
