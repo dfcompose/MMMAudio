@@ -4,6 +4,7 @@ from std.algorithm import vectorize
 from mmm_audio import *
 
 
+
 @always_inline
 def pan2(samples: Float64, pan: Float64) -> MFloat[2]:
     """
@@ -340,7 +341,7 @@ def dbap2D[
     Args:
         sample: Mono input sample.
         pos: X/Y position of the source in meters as an MFloat[2].
-        blur: Blurs the source, causing it to gravitate to one speaker less. Values must be greater than or equal to 0.
+        blur: Blurs the source, causing it to spread to more speakers. Values must be greater than or equal to 0, with 0 being .
         rolloff: The dB amplitude rolloff.
     
     Returns:
@@ -367,7 +368,7 @@ def dbap2D[
     
    
     
-    # comptime speaker_variance = variance_of_dists()
+    # comptime speaker_variance = variance_of_dists[num_speakers, speaker_pos]()
     
     comptime simd_out_size = next_power_of_two(num_speakers)
     comptime vec_weights = array_to_mfloat[simd_out_size, weights]()
