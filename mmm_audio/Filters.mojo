@@ -12,55 +12,55 @@ struct Lag[num_chans: Int = 1](Movable, Copyable):
 
     comptime simd_width = simd_width_of[DType.float64]()
     var world: World
-    var val: MFloat[Self.num_chans]
+    var lagged: MFloat[Self.num_chans]
     var b1: MFloat[Self.num_chans]
-    var lag: MFloat[Self.num_chans]
-    var in_samp: MFloat[Self.num_chans]
+    var lag_time: MFloat[Self.num_chans]
+    var input: MFloat[Self.num_chans]
 
-    def __init__(out self, world: World, lag: MFloat[Self.num_chans] = MFloat[Self.num_chans](0.02)):
+    def __init__(out self, world: World, lag_time: MFloat[Self.num_chans] = MFloat[Self.num_chans](0.02)):
         """Initialize the lag processor with given lag time in seconds.
 
         Args:
             world: Pointer to the MMMWorld.
-            lag: SIMD vector specifying lag time in seconds for each channel.
+            lag_time: SIMD vector specifying lag time in seconds for each channel.
         """
         
         self.world = world
-        self.val = MFloat[Self.num_chans](0.0)
+        self.lagged = MFloat[Self.num_chans](0.0)
         self.b1 = 0
-        self.lag = 0
-        self.in_samp = MFloat[Self.num_chans](0.0)
-        self.set_lag_time(lag)
+        self.lag_time = 0
+        self.input = MFloat[Self.num_chans](0.0)
+        self.set_lag_time(lag_time)
         
     @always_inline
-    def next(mut self, in_samp: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
+    def next(mut self, input: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
         """Process one sample through the lag processor.
         
         Args:
-            in_samp: Input SIMD vector values.
+            input: Input SIMD vector values.
         
         Returns:
             Output values after applying the lag.
         """
 
-        self.in_samp = in_samp
-        self.val = self.in_samp + self.b1 * (self.val - (self.in_samp))
-        self.val = sanitize(self.val)
+        self.input = input
+        self.lagged = self.input + self.b1 * (self.lagged - (self.input))
+        self.lagged = sanitize(self.lagged)
 
-        return self.val
+        return self.lagged
 
     @always_inline
     def next(mut self) -> MFloat[Self.num_chans]:
-        """Process one sample through the lag processor. This version does not take an input argument and instead uses the last value set in self.in_samp.
+        """Process one sample through the lag processor. This version does not take an input argument and instead uses the last value set in self.input.
         
         Returns:
             Output values after applying the lag.
         """
 
-        self.val = self.in_samp + self.b1 * (self.val - (self.in_samp))
-        self.val = sanitize(self.val)
+        self.lagged = self.input + self.b1 * (self.lagged - (self.input))
+        self.lagged = sanitize(self.lagged)
 
-        return self.val
+        return self.lagged
 
     @always_inline
     def set_lag_time(mut self, lag: MFloat[Self.num_chans]):
@@ -69,7 +69,7 @@ struct Lag[num_chans: Int = 1](Movable, Copyable):
         Args:
             lag: SIMD vector specifying new lag time in seconds for each channel.
         """
-        self.lag = lag
+        self.lag_time = lag
         self.b1 = exp(-6.907755278982137 / (lag * self.world[].sample_rate))
     
 struct Lags[num_lags: Int](Movable, Copyable):
@@ -98,12 +98,12 @@ struct Lags[num_lags: Int](Movable, Copyable):
     def __getitem__(self, idx: Int) -> Float64:
         simd_index = idx // Self.simd_width
         lane_index = idx % Self.simd_width
-        return self.lags[simd_index].val[lane_index]
+        return self.lags[simd_index].lagged[lane_index]
 
     def __setitem__(mut self, idx: Int, value: Float64):
         simd_index = idx // Self.simd_width
         lane_index = idx % Self.simd_width
-        self.lags[simd_index].val[lane_index] = value
+        self.lags[simd_index].lagged[lane_index] = value
 
 
 struct LagUD[num_chans: Int = 1](Movable, Copyable):
@@ -114,11 +114,12 @@ struct LagUD[num_chans: Int = 1](Movable, Copyable):
     """
 
     var world: World
-    var val: MFloat[Self.num_chans]
+    var lagged: MFloat[Self.num_chans]
     var b1_up: MFloat[Self.num_chans]
     var b1_down: MFloat[Self.num_chans]
     var lag_up: MFloat[Self.num_chans]
     var lag_down: MFloat[Self.num_chans]
+    var input: MFloat[Self.num_chans]
 
     def __init__(
         out self,
@@ -134,31 +135,48 @@ struct LagUD[num_chans: Int = 1](Movable, Copyable):
             lag_down: SIMD vector specifying lag time in seconds for falling values.
         """
         self.world = world
-        self.val = MFloat[Self.num_chans](0.0)
+        self.lagged = MFloat[Self.num_chans](0.0)
         self.b1_up = 0
         self.b1_down = 0
         self.lag_up = 0
         self.lag_down = 0
+        self.input = MFloat[Self.num_chans](0.0)
         self.set_lag_times(lag_up, lag_down)
 
     @always_inline
-    def next(mut self, in_samp: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
+    def next(mut self, input: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
         """Process one sample through the lag processor.
 
         Args:
-            in_samp: Input SIMD vector values.
+            input: Input SIMD vector values.
 
         Returns:
             Output values after applying the appropriate lag.
         """
         # Select coefficient based on whether input is greater than current value
-        mask = in_samp.gt(self.val)
+        mask = input.gt(self.lagged)
         b1 = mask.select(self.b1_up, self.b1_down)
 
-        self.val = in_samp + b1 * (self.val - in_samp)
-        self.val = sanitize(self.val)
+        self.lagged = input + b1 * (self.lagged - input)
+        self.lagged = sanitize(self.lagged)
 
-        return self.val
+        return self.lagged
+
+    @always_inline
+    def next(mut self) -> MFloat[Self.num_chans]:
+        """Process one sample through the lag processor. This version does not take an input argument and instead uses the last value set in self.input.
+
+        Returns:
+            Output values after applying the appropriate lag.
+        """
+        # Select coefficient based on whether input is greater than current value
+        mask = self.input.gt(self.lagged)
+        b1 = mask.select(self.b1_up, self.b1_down)
+
+        self.lagged = self.input + b1 * (self.lagged - self.input)
+        self.lagged = sanitize(self.lagged)
+
+        return self.lagged
 
     @always_inline
     def set_lag_times(

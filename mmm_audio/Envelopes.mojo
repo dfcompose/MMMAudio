@@ -5,6 +5,62 @@ This module provides an envelope generator class that can create complex envelop
 
 from mmm_audio import *
 
+def env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none](world: World, x: Float64, points: Span[Tuple[Float64, Float64], ...], curve: Float64 = 1.0) -> Float64:
+    """Creates an envelope by linearly mapping an input value `x` based on a series of input-output points. This is just a function, so it should be paired with a Line or Phasor UGen to create an envelope generator.
+
+    The function takes a variable number of (input, output) pairs and linearly maps the input `x` to the corresponding output value based on which segment of the input range `x` falls into. If `x` is outside the range of the provided points, it will be clamped to the nearest segment.
+
+    There are optional parameters and arguments for applying a curve to the segments. See below for some possibilities:
+
+    ```
+    env_points = InlineArray[Tuple[Float64, Float64], 4][(0.0, 0.0), (0.01, 1.0), (0.9, 1.0), (1.0, 0.0)]
+    env(world, x, env_points) # standard linear envelope
+    env(world, x, env_points, curve=2.0) # exponential curve
+    env(world, x, env_points, curve=0.5) # logarithmic curve
+    env[win_type=WindowType.sine, interp=Interp.linear](world, x, env_points) # standard envelope with sine shaped edges
+    ```
+
+    Parameters:
+        win_type: An optional WindowType that specifies if the output should be processed through a window function. Default is WindowType.none (no windowing). If a window type is specified, the output values in the points should be in the range [0, 1] as they will be treated as positions within the window.
+        interp: An optional Interp that specifies the type of interpolation to use if win_type is not none. Default is Interp.none (no interpolation).
+
+    Args:
+        world: The World object, required if win_type is not none for window processing.
+        x: The input value to be mapped.
+        points: A variable number of (input, output) pairs that define the envelope. The first value is the input breakpoint, and the second value is the corresponding output value. The input breakpoints must be in ascending order.
+        curve: A Float64 value that applies a curve to the interpolation between points. A value of 1.0 means no curve (linear), values greater than 1.0 will create a more exponential curve, and values between 0 and 1 will create a logarithmic curve.
+
+    Returns:
+        The mapped output value corresponding to the input `x`.
+    """
+    length = len(points)
+    if length < 2:
+        return x
+    
+    # Handle cases where x is outside the range of provided points
+    if x <= points[0][0]:
+        return points[0][1]
+    if x >= points[length-1][0]:
+        return points[length-1][1]
+
+    # Find the segment that x falls into
+    for i in range(length - 1):
+        x0, y0 = points[i]
+        x1, y1 = points[i + 1]
+        if x0 <= x <= x1:
+            # Perform linear interpolation
+            x_scaled1 = ((x - x0) / (x1 - x0))
+            if curve != 1.0:
+                if y1 > y0:
+                    x_scaled1 = pow(x_scaled1, curve)
+                else:
+                    x_scaled1 = pow(x_scaled1, 1/curve)
+            comptime if win_type != WindowType.none:
+                x_scaled1 = win_read[win_type, interp](world, x_scaled1/2)
+            return y0 + (y1 - y0) * x_scaled1
+            
+    return points[length - 1][1]
+
 struct EnvParams(Movable, Copyable):
     """Parameters for the Env class.
 

@@ -159,6 +159,8 @@ def pan_az[simd_out_size: Int = 2](sample: Float64, pan: Float64, num_speakers: 
         MFloat[simd_out_size]: The panned output sample for each speaker.
     """
 
+    comptime assert simd_out_size & (simd_out_size - 1) == 0, "simd_out_size must be a power of two for pan_az"
+
     var rwidth = 1.0 / width
     var frange = Float64(num_speakers) * rwidth
     var rrange = 1.0 / frange
@@ -184,12 +186,13 @@ def pan_az[simd_out_size: Int = 2](sample: Float64, pan: Float64, num_speakers: 
 comptime pi_over_2 = pi / 2.0
 
 @always_inline
-def pan_az[num_speakers: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5](sample: Float64, pan: Float64) -> MFloat[next_power_of_two(num_speakers)]:
+def pan_az[num_speakers: Int = 2, simd_out_size: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5](sample: Float64, pan: Float64) -> MFloat[simd_out_size]:
     """
     Pan a mono sample to N speakers arranged in a circle around the listener using azimuth panning. This version fixes the number of speakers, width, and orientation at compile time for better performance.
 
     Parameters:
-        num_speakers: Number of output channels (speakers). Must be a power of two that is at least as large as num_speakers.
+        num_speakers: Number of output speakers. Can be any integer, but must be less than or equal to simd_out_size.
+        simd_out_size: Number of channels of the SIMD output vector. Must be a power of two that is at least as large as num_speakers.
         width: Width of the speaker array (default is 2.0).
         orientation: Orientation offset of the speaker array (default is 0.5).
 
@@ -198,10 +201,12 @@ def pan_az[num_speakers: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0
         pan: Pan position from 0.0 to 1.0.
 
     Returns:
-        MFloat[next_power_of_two(num_speakers)]: The panned output sample for each speaker.
+        MFloat[simd_out_size]: The panned output sample for each speaker.
     """
 
-    comptime simd_out_size = next_power_of_two(num_speakers)
+    comptime assert num_speakers <= simd_out_size, "num_speakers must be less than or equal to simd_out_size for pan_az"
+    comptime assert simd_out_size & (simd_out_size - 1) == 0, "simd_out_size must be a power of two for pan_az"
+
     comptime num_simd_pairs = num_speakers // 2 + (num_speakers % 2)
     comptime rwidth = 1.0 / width
     comptime frange = Float64(num_speakers) * rwidth

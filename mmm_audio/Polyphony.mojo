@@ -22,7 +22,7 @@ trait PolyObject(Movable, Copyable):
         
         pass
     
-    # set_gate is helpful in polyphonic synths with ASR or ADSR envelopes
+    
     def set_gate(mut self, gate: Bool):
         """Necessary for PolyObjects that use next_gate or next_mgate. This function is used internally by Poly to open and close the gate of the PolyObject.
         
@@ -36,12 +36,7 @@ trait PolyObject(Movable, Copyable):
         """
         pass
 
-    def check_ability[T: AnyType](self, animal: T) -> Bool:
-        comptime if conforms_to(T, PolyReset):
-            return True
-        else:
-            return False
-
+    @doc_hidden
     def reset_Resettable(mut self):
         comptime r = reflect[Self]()
         comptime names = r.field_names()
@@ -73,8 +68,12 @@ struct Poly(Movable, Copyable):
 
     def __init__(out self, world: World, num_voices: Int, namespace: Optional[String] = None):
         """
+        Poly init function.
+
         Args:
-            num_voices (Int): the number of voices in the Poly object. This is the maximum number of voices that can be active at once. If all voices are active and a new trigger is received, the trigger will be ignored. You can increase the number of voices with the set_num_voices function, but you cannot decrease the number of voices after initialization.
+            world: World object from MMMAudio.
+            num_voices: Number of voices in the Poly object. This is the maximum number of voices that can be active at once. If all voices are active and a new trigger is received, the trigger will be ignored. You can increase the number of voices with the set_num_voices function, but you cannot decrease the number of voices after initialization.
+            namespace: The namespace for the Messenger. Only necessary if you want to trigger the Poly with messages from Python.
         """
         self.num_voices = num_voices
         self.active_list = [False for _ in range(self.num_voices)]
@@ -99,6 +98,16 @@ struct Poly(Movable, Copyable):
 
     def next_trig[T: PolyObject](mut self, mut poly_objects: List[T], trig: Bool) -> Int:
         """Looks at the value of trig. If trig is True, looks for a free voice and triggers it. Returns the index of the voice that was triggered, or -1 if no voice was triggered.
+
+        Parameters:
+            T: This value is inferred at compile time based on the type of the poly_objects list. This is the type of the PolyObjects that are being triggered.
+
+        Args:
+            poly_objects: A list of structs conforming to the PolyObject trait. The Poly will look for a free voice in this list and trigger it when trig is True.
+            trig: A boolean value that triggers a voice when it is True.
+
+        Return:
+            The index of the voice that was triggered, or -1 if no voice was triggered.
         """
         self._reset[audio_control = 0](poly_objects)
         return self.find_voice_and_trigger(poly_objects, trig)
@@ -114,17 +123,40 @@ struct Poly(Movable, Copyable):
             call_back(poly_objects[voice_index], trig)
         return voice_index
 
-    def next_mtrig[T: PolyObject, call_back: def (mut poly_object: T, mut vals: List[Int]) capturing -> None](mut self, mut poly_objects: List[T]):
-        """This convenience function acheives all functionality of a Poly that is being triggered by messages from Python. It resets the Poly at the beginning of each block, looks for triggers from Python, and triggers PolyObjects as needed. The optional call_back function is called whenever a new trigger is received from Python. `next_mtrig` has to be paired with messages sent from Python as a List[Int] or a List[Float64] or an Int or a Float64. The call_back function receives the List or value so the PolyObject can be controlled by the message from Python.
+    def next_mtrig[
+        T: PolyObject,
+        call_back: def (mut poly_object: T, mut vals: List[Int]) capturing -> None,
+    ](mut self, mut poly_objects: List[T]):
+        """Convenience function triggered by Python messages.
+
+        This convenience function achieves all functionality of a Poly that is being 
+        triggered by messages from Python. It resets the Poly at the beginning of each 
+        block, looks for triggers from Python, and triggers PolyObjects as needed. 
+
+        The optional call_back function is called whenever a new trigger is received 
+        from Python. `next_mtrig` has to be paired with messages sent from Python as a 
+        List[Int], List[Float64], Int, or Float64. The call_back function receives the 
+        List or value so the PolyObject can be controlled by the message from Python.
 
         Parameters:
-            T: This value is inferred at compile time based on the type of the poly_objects list. This is the type of the PolyObjects that are being triggered.
-            call_back: A function that is called whenever a new trigger is received from Python. This can be used to control the parameters of the triggered PolyObject with the message from Python. There are four versions of next_mtrig. The only difference is the type of the message that is sent from Python. This is differentiated by the type of the `vals` parameter in the call_back function. The type can be a List[Int], a List[Float64], an Int, or a Float64, which is paired with send_ints, send_floats, send_int, and send_float respectively on the Python side.
+            T: The type of the PolyObjects that are being triggered. Inferred at compile 
+                time based on the type of the poly_objects list.
+            call_back: A function called whenever a new trigger is received from Python 
+                used to control the parameters of the triggered PolyObject.
+                
+                Args:
+                    poly_object: The specific PolyObject instance being controlled.
+                    vals: The runtime trigger message parameters sent from Python.
+                
+                There are four versions of next_mtrig differentiated by the type of this 
+                `vals` parameter (List[Int], List[Float64], Int, or Float64) paired with 
+                send_ints, send_floats, send_int, and send_float on the Python side.
 
         Args:
-            poly_objects: A list of structs conforming to the PolyObject trait.
-
+            poly_objects: A list of structs conforming to the PolyObject trait. This is 
+                the list of PolyObjects that we are controlling.
         """
+
         self._reset[audio_control = 1](poly_objects)
         vals = List[Int]()
         for i in range(self.num_voices):
@@ -210,7 +242,6 @@ struct Poly(Movable, Copyable):
             for i in range(self.num_voices):
                 trig = self.m.notify_update(String(i), vals)
                 if trig:
-                    print(vals)
                     if vals[1] > 0: # if the velocity is greater than 0, trigger the note on
                         free_voice = self._find_voice_and_open_gate(poly_objects, trig, vals[0]) # get the index of the free voice
                         if free_voice >= 0:
@@ -337,7 +368,6 @@ struct Poly(Movable, Copyable):
 
     @doc_hidden
     def _close_gate[T: PolyObject](mut self, mut poly_objects: List[T], key: Int) -> Int:
-        print(self.int_dict)
         active_list_index = self.int_dict.pop(key, -1)
         if active_list_index != -1:
             poly_objects[active_list_index].set_gate(False)
@@ -376,9 +406,9 @@ trait GrainObject(PolyObject):
         """Should probably just be: return self.grain.get_env_trigger()."""
         return False
 
-    def set_user_defined_env(mut self, env_params: EnvParams):
-        """Should probably just be: self.grain.set_user_defined_env(env_params)."""
-        pass
+    def set_user_defined_env(mut self, env_points: Span[Tuple[Float64, Float64], ...]):
+        """Should probably just be: self.grain.set_user_defined_env(env_points)."""
+        ...
 
     def reset(mut self):
         """Reset the grain to its initial state. This can be used to retrigger the grain with the same parameters."""
@@ -403,7 +433,7 @@ struct GrainAll(GrainObject):
     var active: Bool
     var dur: Float64
     var trigger: Bool
-    var user_defined_env: Env
+    var user_defined_env: List[Tuple[Float64, Float64]]
     var env_trigger: Bool
 
     def __init__(out self, world: World):
@@ -420,7 +450,10 @@ struct GrainAll(GrainObject):
         self.active = False
         self.dur = 1.0
         self.trigger = False
-        self.user_defined_env = Env(world)
+        self.user_defined_env = List[Tuple[Float64, Float64]]()
+        self.user_defined_env.append((0.0, 0.0))
+        self.user_defined_env.append((0.5, 1.0))
+        self.user_defined_env.append((1.0, 0.0))
         self.env_trigger = False
 
     # These are the functions that need to be implemented for the PolyObject trait:
@@ -439,9 +472,9 @@ struct GrainAll(GrainObject):
     def get_env_trigger(self) -> Bool:
         return self.env_trigger
     
-    def set_user_defined_env(mut self, env_params: EnvParams):
-        self.user_defined_env.params = env_params.copy()
-        self.user_defined_env._reset_vals()  
+    def set_user_defined_env(mut self, env_points: Span[Tuple[Float64, Float64], ...]):
+        self.user_defined_env.clear()
+        self.user_defined_env.extend(env_points)
 
     def set_vals(mut self, 
     rate: Float64 = 1.0, 
@@ -470,9 +503,15 @@ struct GrainAll(GrainObject):
 
         Parameters:
             num_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
-            win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (Env) will be used as the window.
+            win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (env) will be used as the window.
             custom_curve: If win_type is WindowType.user_defined, applies a custom curve to the user defined envelope. This is the win_type parameter of the Env next function.
             bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
+
+        Args:
+            buffer: A SIMDBuffer to read from.
+
+        Return:
+            A multi-channel sample of the grain. The number of channels is the same as the number of channels in the buffer.
         """
 
         phase = self.line.next(0.0, 1.0, self.dur, self.trigger)
@@ -481,7 +520,7 @@ struct GrainAll(GrainObject):
         sample = buf_read[interp=Interp.linear, bWrap=bWrap](self.world, buffer, buf_phase)
 
         comptime if win_type == WindowType.user_defined:
-            win = self.user_defined_env.next[win_type=custom_curve](self.env_trigger, phase)
+            win = env[win_type=custom_curve](self.world, phase, self.user_defined_env)
         else:
             win = win_read[win_type, Interp.linear](self.world, phase)
 
@@ -498,9 +537,7 @@ struct GrainAll(GrainObject):
         self.trigger = False
 
 struct Grain(GrainObject):
-    """A single grain for granular synthesis with multiple output options: next_2, next_az, next_all.
-
-    Used as part of the TGrains and the PitchShift structs for triggered granular synthesis.
+    """A single grain for granular synthesis with multiple output options: next_2, next_az, next_all. Used as part of the TGrains and the PitchShift structs for triggered granular synthesis.
     """
     var world: World 
     var grain: GrainAll
@@ -508,6 +545,7 @@ struct Grain(GrainObject):
 
     def __init__(out self, world: World):
         """
+        Init function for the Grain struct.
 
         Args:
             world: Pointer to the MMMWorld instance.
@@ -532,9 +570,13 @@ struct Grain(GrainObject):
     def get_env_trigger(self) -> Bool:
         return self.grain.get_env_trigger()
 
-    def set_user_defined_env(mut self, env_params: EnvParams):
-        """Set a the EnvParams of a user-defined envelope for the grain. This allows you to use a custom envelope shape instead of the built-in window types."""
-        self.grain.set_user_defined_env(env_params)
+    def set_user_defined_env(mut self, env_points: Span[Tuple[Float64, Float64], ...]):
+        """Set a the EnvParams of a user-defined envelope for the grain. This allows you to use a custom envelope shape instead of the built-in window types.
+        
+        Args:
+            env_points: The points for the user-defined envelope. This should be a list of tuples with the desired envelope settings.
+        """
+        self.grain.set_user_defined_env(env_points)
 
     def set_vals(mut self, 
     rate: Float64 = 1.0, 
@@ -568,6 +610,9 @@ struct Grain(GrainObject):
 
         Args:
             buffer: A SIMDBuffer to read from.
+
+        Return:
+            A stereo sample of the grain with panning applied.
         """
         
         var sample = self.grain.next_all[win_type=win_type, bWrap=bWrap](buffer)
@@ -579,26 +624,43 @@ struct Grain(GrainObject):
             panned = pan_stereo(MFloat[2](sample[self.start_chan], sample[(self.start_chan + 1) % buffer.get_num_chans()]), self.grain.pan) 
             return panned
 
-    def next_az[num_buf_chans: Int, num_out_chans: Int = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0, num_speakers: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5) -> MFloat[num_out_chans]:
+    def next_az[num_buf_chans: Int, num_speakers: Int = 2, num_simd_chans: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
         """Get the next sample of the grain as a multi-channel signal with azimuth panning. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions and pan_az for details on the panning parameters.
+
+        Parameters:
+            num_buf_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
+            num_speakers: The number of speakers in the system. This is used for calculating the azimuth panning.
+            num_simd_chans: The number of channels in the output sample. This must be a power of two and should be greater than or equal to num_speakers. If num_simd_chans is greater than num_speakers, the extra channels will just be 0.0.
+            width: The width of the panning, from 0.0 (narrow) to 2.0 (wide). This is used for calculating the azimuth panning.
+            orientation: The orientation of the speakers, from 0.0 to 1.0. This is used for calculating the azimuth panning.
+            win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (Env) will be used as the window.
+            custom_curve: If win_type is WindowType.user_defined, applies a custom curve to the user defined envelope. This is the win_type parameter of the Env next function.
+            bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
+        
+        Args:
+            buffer: A SIMDBuffer to read from.
+            buffer_chan: The channel of the buffer to read from for panning. This should be less than num_buf_chans.
         """
         var sample = self.grain.next_all[win_type=win_type, bWrap=bWrap](buffer)
 
-        panned = pan_az[num_out_chans](sample[buffer_chan], self.grain.pan, num_speakers, width, orientation) 
-
-        return panned
-
-    def next_az[num_buf_chans: Int, num_speakers: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[next_power_of_two(num_speakers)]:
-        """Get the next sample of the grain as a multi-channel signal with azimuth panning. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions and pan_az for details on the panning parameters.
-        """
-        var sample = self.grain.next_all[win_type=win_type, bWrap=bWrap](buffer)
-
-        panned = pan_az[num_speakers, width, orientation](sample[buffer_chan], self.grain.pan) 
+        panned = pan_az[num_speakers, num_simd_chans, width, orientation](sample[buffer_chan], self.grain.pan) 
 
         return panned
 
     def next_all[num_chans: Int, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_chans]) -> MFloat[num_chans]:
-        """Get the next sample of the grain with no panning. This returns all channels of the buffer. See next_2 for param/arg descriptions.
+        """Get the next sample of the grain with no panning. This returns all channels of the buffer.
+
+        Parameters:
+            num_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
+            win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (Env) will be used as the window.
+            custom_curve: If win_type is WindowType.user_defined, applies a custom curve to the user defined envelope. This is the win_type parameter of the Env next function.
+            bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
+
+        Args:
+            buffer: A SIMDBuffer to read from.
+
+        Return:
+            A sample of the grain with num_chans channels.
         """
         var sample = self.grain.next_all[win_type=win_type, bWrap=bWrap](buffer)
         return sample
@@ -615,11 +677,12 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
     var grains: List[Self.T] 
     var world: World
     var poly: Poly
-    var env_params: EnvParams
+    var env_points: List[Tuple[Float64, Float64]] 
     var grain_index: Int
 
     def __init__(out self, world: World, num_grains: Int = 1):
         """
+        Initialize the TGrains struct.
 
         Args:
             world: Pointer to the MMMWorld instance.
@@ -631,11 +694,14 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
         for _ in range(num_grains):
             self.grains.append(Self.T(world))
         self.poly = Poly(world, num_grains) 
-        self.env_params = EnvParams()  # Initialize with default parameters
+        self.env_points = List[Tuple[Float64, Float64]]()  # Initialize with default parameters
         self.grain_index = -1
 
     def set_num_grains(mut self, new_num_grains: Int):
         """This function can be used to change the number of grains that the Poly can use. If more grains are needed than the initial number, you can increase the number of grains with this function.
+
+        Args:
+            new_num_grains: The new number of grains that the Poly should be able to use. This should be greater than the current number of grains. If it is less than the current number of grains, this function will do nothing.
         """
         if new_num_grains > self.num_grains:
             self.poly.set_num_voices(new_num_grains)
@@ -643,13 +709,28 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
                 self.grains.append(Self.T(self.world))
             self.num_grains = new_num_grains
 
-    def set_env_params(mut self, env_params: EnvParams):
-        """Set a the EnvParams of a user-defined envelope for all grains. This allows you to use a custom envelope shape instead of the built-in window types. Will update each grain on its next trigger. (Setting the EnvParams directly will not work).
-        
+    def set_env_points(mut self, env_points: Span[Tuple[Float64, Float64], ...]):
+        """Set the envelope points for all grains by providing Span (List or InlineArray) of tuples. This allows you to use a custom envelope shape instead of the built-in window types. Will update each grain on its next trigger. The tuples should be in the format (x, y), where x is the position in the grain from 0.0 to 1.0 and y is the amplitude at that point. For example, set_env_points((0.0, 0.0), (0.5, 1.0), (1.0, 0.0)) would be a simple triangle envelope.
+
         Args:
-            env_params: An EnvParams object that defines the envelope shape.
+            env_points: A List or other Span of tuples defining the envelope shape.
         """
-        self.env_params = env_params.copy()
+        self.env_points.clear()
+        for point in env_points:
+            self.env_points.append(point)
+        # set all the grains to update their user_defined_env with the new env on the next trigger
+        for ref grain in self.grains:
+            grain.set_env_trigger(True)
+
+    def set_env_points(mut self, env_points: List[Float64]):
+        """Set the envelope points for all grains by providing a list of values. This allows you to use a custom envelope shape instead of the built-in window types. Will update each grain on its next trigger.
+
+        Args:
+            env_points: A List or other Span of values defining the envelope shape. Each 2 values represent an env_point, so the list should be in the format [x1, y1, x2, y2, ...], where x is the position in the grain from 0.0 to 1.0 and y is the amplitude at that point. For example, [0.0, 0.0, 0.5, 1.0, 1.0, 0.0] would be a simple triangle envelope.
+        """
+        self.env_points.clear()
+        for i in range(len(env_points)//2):
+            self.env_points.append((env_points[i*2], env_points[i*2+1]))
         # set all the grains to update their user_defined_env with the new env on the next trigger
         for ref grain in self.grains:
             grain.set_env_trigger(True)
@@ -668,7 +749,7 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
             self.grain_index = self.poly.next_trig(self.grains, trig)
             if self.grain_index >= 0:
                 if self.grains[self.grain_index].get_env_trigger() and trig:
-                    self.grains[self.grain_index].set_user_defined_env(self.env_params.copy())
+                    self.grains[self.grain_index].set_user_defined_env(self.env_points)
                     self.grains[self.grain_index].set_env_trigger(False)
         else:
             self.grain_index = self.poly.next_trig(self.grains, trig)
@@ -823,6 +904,9 @@ struct PitchShift[num_chans: Int = 1, win_type: WindowType = WindowType.hann](Mo
             added_delay_low: Minimum amount of delay to add to the start of each grain in seconds.
             added_delay_high: Maximum amount of delay to add to the start of each grain in seconds. (Maximum added delay should be set so that it does not exceed the internal buffer size when combined with the grain duration and time dispersion).
             gain: Amplitude scaling factor for the output.
+
+        Returns:
+            The next sample of the pitch-shifted signal as a SIMD vector with num_chans channels.
         """
 
         self.recorder.write_next(in_sig)

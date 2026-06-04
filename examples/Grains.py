@@ -29,7 +29,10 @@ from mmm_python import *
 mmm_audio = MMMAudio(128, num_output_channels = 2, graph_name="Grains_Custom", package_name="examples")
 mmm_audio.start_audio() 
 
-mmm_audio.send_floats("times", [0.01, 0.9])
+# setting the grain envelope should change the sound dramatically
+mmm_audio.send_floats("env_points", [0.0, 0.0, 0.01, 1.0, 1.0, 0.0]) 
+mmm_audio.send_floats("env_points", [0.0, 0.0, 0.5, 1.0, 1.0, 0.0])
+mmm_audio.send_floats("env_points", [0.0, 0.0, 0.1, 1.0, 0.2, 0.75, 0.8, 0.75, 1.0,0.0]) 
 
 MMMAudio.get_audio_devices()
 

@@ -3,6 +3,7 @@ from mmm_audio import *
 # THE SYNTH
 
 struct DistanceBasedPanning(Movable, Copyable):
+struct DistanceBasedPanning(Movable, Copyable):
     var world: World  
     var dust: Dust[1] 
     var messenger: Messenger
@@ -22,6 +23,10 @@ struct DistanceBasedPanning(Movable, Copyable):
 
         # self.messenger.update("pos", self.pos)
         self.pos[0] = linlin(self.world[].mouse_x, 0.0, 1.0, -1.0, 1.0)
+        self.pos[1] = linlin(self.world[].mouse_y, 0.0, 1.0, 1.0, -1.0)
+        
+        # 4 speaker setup
+
         self.pos[1] = linlin(self.world[].mouse_y, 0.0, 1.0, 1.0, -1.0)
         
         # 4 speaker setup
@@ -63,4 +68,4 @@ struct DistanceBasedPanning(Movable, Copyable):
         # out = dbap2D[7, max_simd, speakers, weights](sig, self.pos, 0.5)
         
 
-        return out * 0.5
+        return out2 * 0.5

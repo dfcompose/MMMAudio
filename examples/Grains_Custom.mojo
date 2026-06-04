@@ -54,8 +54,8 @@ struct GrainBPF(GrainObject):
     def get_env_trigger(self) -> Bool:
         return self.grain.get_env_trigger()
 
-    def set_user_defined_env(mut self, env_params: EnvParams):
-        self.grain.set_user_defined_env(env_params)
+    def set_user_defined_env(mut self, env_points: Span[Tuple[Float64, Float64], ...]):
+        self.grain.set_user_defined_env(env_points)
 
     def set_vals(mut self, 
     rate: Float64 = 1.0, 
@@ -101,10 +101,9 @@ struct Grains_Custom(Movable, Copyable):
     
     var tgrains: TGrains[GrainBPF, WindowType.user_defined, WindowType.hann]
     var impulse: Phasor[1]  
-    var start_frame: Float64
     var m: Messenger
     var max_trig_rate: Float64
-    var env_params: EnvParams
+    var points_temp: List[Float64]
      
     def __init__(out self, world: World):
         self.world = world  
@@ -116,21 +115,23 @@ struct Grains_Custom(Movable, Copyable):
         self.impulse = Phasor[1](self.world)
         self.m = Messenger(world)
         self.max_trig_rate = 20.0
-        self.env_params = EnvParams()
-        self.env_params.times = [0.01, 0.9]
-        self.env_params.values = [0., 1., 0.]
-        self.tgrains.set_env_params(self.env_params)
+        self.points_temp = List[Float64]()
 
-        self.start_frame = 0.0 
+        arr: InlineArray[Tuple[Float64, Float64], 4] = [
+            (0.0, 0.0), 
+            (0.01, 1.0), 
+            (0.9, 1.0), 
+            (1.0, 0.0)
+        ]
+        # set the initial envelope points for the grains.
+        self.tgrains.set_env_points(arr)
 
     @always_inline
     def next(mut self) -> MFloat[2]:
         self.m.update("max_trig_rate", self.max_trig_rate)
-        c1 = self.m.notify_update("times", self.env_params.times) 
-        c2 = self.m.notify_update("values", self.env_params.values) 
-        c3 = self.m.notify_update("curves", self.env_params.curves) 
-        if c1 or c2 or c3:
-            self.tgrains.set_env_params(self.env_params)
+        new_points = self.m.notify_update("env_points", self.points_temp)
+        if new_points:
+            self.tgrains.set_env_points(self.points_temp)
 
         imp_freq = linlin(self.world[].mouse_y, 0.0, 1.0, 1.0, self.max_trig_rate)
         var impulse = self.impulse.next_bool(imp_freq, 0, True)
