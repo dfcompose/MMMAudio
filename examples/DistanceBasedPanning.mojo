@@ -19,6 +19,7 @@ struct DistanceBasedPanning(Movable, Copyable):
         self.pos = [0, 0]
 
     def next(mut self) -> MFloat[8]:
+        
         comptime max_simd = 8
 
         # self.messenger.update("pos", self.pos)
