@@ -57,6 +57,6 @@ struct Grains(Movable, Copyable):
             grain_num = self.tgrains.trig(impulse)
             if grain_num >= 0:
                 self.tgrains.grains[grain_num].set_vals(1, start_frame, 0.4, random_float64(-1.0, 1.0), 1.0, 0)
-            out2 = self.tgrains.next_az[num_speakers, num_simd_chans](self.buffer, 0, 1.0)
+            out2 = self.tgrains.next_multi_channel[num_speakers=num_speakers, num_simd_chans=num_simd_chans](self.buffer, 0, 1.0)
 
             return out2

@@ -409,15 +409,13 @@ trait GrainObject(PolyObject):
         """
         return 0.0
 
-    def next_az[num_buf_chans: Int, num_speakers: Int = 2, num_simd_chans: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
-        """Get the next sample of the grain as a multi-channel signal with azimuth panning. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions and pan_az for details on the panning parameters.
+    def next_multi_channel[num_buf_chans: Int, num_speakers: Int = 2, num_simd_chans: Int = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
+        """Get the next sample of the grain as a multi-channel signal. By default, Grain uses azimuth panning with a width of 2.0 and an orientation of 0.5. However, you can use dbap or any other panning algorithm by creating a custom grain with its own next_multi_channel function. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions.
 
         Parameters:
             num_buf_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             num_speakers: The number of speakers in the system. This is used for calculating the azimuth panning.
             num_simd_chans: The number of channels in the output sample. This must be a power of two and should be greater than or equal to num_speakers. If num_simd_chans is greater than num_speakers, the extra channels will just be 0.0.
-            width: The width of the panning, from 0.0 (narrow) to 2.0 (wide). This is used for calculating the azimuth panning.
-            orientation: The orientation of the speakers, from 0.0 to 1.0. This is used for calculating the azimuth panning.
             win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (Env) will be used as the window.
             custom_curve: If win_type is WindowType.user_defined, applies a custom curve to the user defined envelope. This is the win_type parameter of the Env next function.
             bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
@@ -602,7 +600,7 @@ struct GrainAll(GrainObject):
         self.trigger = False
 
 struct Grain(GrainObject):
-    """A single grain for granular synthesis with multiple output options: next_2, next_az, next_all. Used as part of the TGrains and the PitchShift structs for triggered granular synthesis.
+    """A single grain for granular synthesis with multiple output options: next_2, next_multi_channel, next_all. Used as part of the TGrains and the PitchShift structs for triggered granular synthesis.
     """
     var world: World 
     var grain: GrainAll
@@ -694,15 +692,13 @@ struct Grain(GrainObject):
             panned = pan_stereo(MFloat[2](sample[self.start_chan], sample[(self.start_chan + 1) % buffer.get_num_chans()]), self.grain.pan) 
             return panned
 
-    def next_az[num_buf_chans: Int, num_speakers: Int = 2, num_simd_chans: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
-        """Get the next sample of the grain as a multi-channel signal with azimuth panning. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions and pan_az for details on the panning parameters.
+    def next_multi_channel[num_buf_chans: Int, num_speakers: Int = 2, num_simd_chans: Int = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
+        """Get the next sample of the grain as a multi-channel signal. By default, Grain uses azimuth panning with a width of 2.0 and an orientation of 0.5. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions and pan_az for details on the panning parameters.
 
         Parameters:
             num_buf_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             num_speakers: The number of speakers in the system. This is used for calculating the azimuth panning.
             num_simd_chans: The number of channels in the output sample. This must be a power of two and should be greater than or equal to num_speakers. If num_simd_chans is greater than num_speakers, the extra channels will just be 0.0.
-            width: The width of the panning, from 0.0 (narrow) to 2.0 (wide). This is used for calculating the azimuth panning.
-            orientation: The orientation of the speakers, from 0.0 to 1.0. This is used for calculating the azimuth panning.
             win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (Env) will be used as the window.
             custom_curve: If win_type is WindowType.user_defined, applies a custom curve to the user defined envelope. This is the win_type parameter of the Env next function.
             bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
@@ -716,7 +712,7 @@ struct Grain(GrainObject):
         """
         var sample = self.grain.next_all[win_type=win_type, bWrap=bWrap](buffer)
 
-        panned = pan_az[num_speakers, num_simd_chans, width, orientation](sample[buffer_chan], self.grain.pan) 
+        panned = pan_az[num_speakers, num_simd_chans, 2, 0.5](sample[buffer_chan], self.grain.pan) 
 
         return panned
 
@@ -851,15 +847,13 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
         return out * gain
 
     @always_inline
-    def next_az[num_buf_chans: Int, num_speakers: Int = 2, num_simd_chans: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0, gain: Float64 = 1.0) -> MFloat[num_simd_chans]:
+    def next_multi_channel[num_buf_chans: Int, num_speakers: Int = 2, num_simd_chans: Int = 2, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0, gain: Float64 = 1.0) -> MFloat[num_simd_chans]:
         """Get the next sample of the grain as a multi-channel signal with azimuth panning. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions and pan_az for details on the panning parameters.
 
         Parameters:
             num_buf_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             num_speakers: The number of speakers in the system. This is used for calculating the azimuth panning.
             num_simd_chans: The number of channels in the output sample. This must be a power of two and should be greater than or equal to num_speakers. If num_simd_chans is greater than num_speakers, the extra channels will just be 0.0.
-            width: The width of the panning, from 0.0 (narrow) to 2.0 (wide). This is used for calculating the azimuth panning.
-            orientation: The orientation of the speakers, from 0.0 to 1.0. This is used for calculating the azimuth panning.
             bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
         
         Args:
@@ -874,7 +868,7 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
         out = MFloat[num_simd_chans](0.0)
         for i in range(len(self.grains)):
             if self.poly.active_list[i]: 
-                out += self.grains[i].next_az[num_speakers=num_speakers, num_simd_chans=num_simd_chans, width=width, orientation=orientation, win_type=Self.win_type, custom_curve=Self.custom_curve, bWrap=bWrap](buffer, buffer_chan)
+                out += self.grains[i].next_multi_channel[num_speakers=num_speakers, num_simd_chans=num_simd_chans, win_type=Self.win_type, custom_curve=Self.custom_curve, bWrap=bWrap](buffer, buffer_chan)
         return out * gain
 
     @always_inline

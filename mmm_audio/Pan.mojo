@@ -191,52 +191,6 @@ def pan_az[simd_out_size: Int = 2](sample: Float64, pan: Float64, num_speakers: 
 
 comptime pi_over_2 = pi / 2.0
 
-@always_inline
-def pan_az[num_speakers: Int = 2, simd_out_size: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5](sample: Float64, pan: Float64) -> MFloat[simd_out_size]:
-    """
-    Pan a mono sample to N speakers arranged in a circle around the listener using azimuth panning. This version fixes the number of speakers, width, and orientation at compile time for better performance.
-
-    Parameters:
-        num_speakers: Number of output speakers. Can be any integer, but must be less than or equal to simd_out_size.
-        simd_out_size: Number of channels of the SIMD output vector. Must be a power of two that is at least as large as num_speakers.
-        width: Width of the speaker array (default is 2.0).
-        orientation: Orientation offset of the speaker array (default is 0.5).
-
-    Args:
-        sample: Mono input sample.
-        pan: Pan position from 0.0 to 1.0.
-
-    Returns:
-        MFloat[simd_out_size]: The panned output sample for each speaker.
-    """
-
-    comptime assert num_speakers <= simd_out_size, "num_speakers must be less than or equal to simd_out_size for pan_az"
-    comptime assert simd_out_size & (simd_out_size - 1) == 0, "simd_out_size must be a power of two for pan_az"
-
-    comptime num_simd_pairs = num_speakers // 2 + (num_speakers % 2)
-    comptime rwidth = 1.0 / width
-    comptime frange = Float64(num_speakers) * rwidth
-    comptime rrange = 1.0 / frange
-
-    comptime aligned_pos_fac = 0.5 * Float64(num_speakers)
-    comptime aligned_pos_const = width * 0.5 + orientation
-    var constant = pan * 2.0 * aligned_pos_fac + aligned_pos_const
-
-    out = MFloat[simd_out_size](0.0)
-
-    # this needs to be checked
-    for i in range(num_simd_pairs):
-        var pos = (constant - MFloat[2](Float64(i*2), Float64(i*2+1))) * rwidth
-        pos = (pos - frange * floor(rrange * pos)) * pi
-
-        mask: MBool[2] = pos.lt(pi)
-        temp = mask.select(sin(pos) * sample, 0.0)
-        out[i*2] = temp[0]
-        if i*2+1 < num_speakers:
-            out[i*2+1] = temp[1]
-
-    return out
-
 struct SplayN[num_channels: Int = 2, pan_points: Int = 128](Movable, Copyable):
     """
     SplayN - Splays multiple input channels into N output channels. Different from `splay` which only outputs stereo, SplayN can output to any number of channels.
@@ -331,8 +285,53 @@ struct SplayN[num_channels: Int = 2, pan_points: Int = 128](Movable, Copyable):
         return out
 
 
-# XBAP Algorithms
+@always_inline
+def pan_az[num_speakers: Int = 2, simd_out_size: Int = 2, width: Float64 = 2.0, orientation: Float64 = 0.5](sample: Float64, pan: Float64) -> MFloat[simd_out_size]:
+    """
+    Pan a mono sample to N speakers arranged in a circle around the listener using azimuth panning. This version fixes the number of speakers, width, and orientation at compile time for better performance.
 
+    Parameters:
+        num_speakers: Number of output speakers. Can be any integer, but must be less than or equal to simd_out_size.
+        simd_out_size: Number of channels of the SIMD output vector. Must be a power of two that is at least as large as num_speakers.
+        width: Width of the speaker array (default is 2.0).
+        orientation: Orientation offset of the speaker array (default is 0.5).
+
+    Args:
+        sample: Mono input sample.
+        pan: Pan position from 0.0 to 1.0.
+
+    Returns:
+        MFloat[simd_out_size]: The panned output sample for each speaker.
+    """
+
+    comptime assert num_speakers <= simd_out_size, "num_speakers must be less than or equal to simd_out_size for pan_az"
+    comptime assert simd_out_size & (simd_out_size - 1) == 0, "simd_out_size must be a power of two for pan_az"
+
+    comptime num_simd_pairs = num_speakers // 2 + (num_speakers % 2)
+    comptime rwidth = 1.0 / width
+    comptime frange = Float64(num_speakers) * rwidth
+    comptime rrange = 1.0 / frange
+
+    comptime aligned_pos_fac = 0.5 * Float64(num_speakers)
+    comptime aligned_pos_const = width * 0.5 + orientation
+    var constant = pan * 2.0 * aligned_pos_fac + aligned_pos_const
+
+    out = MFloat[simd_out_size](0.0)
+
+    # this needs to be checked
+    for i in range(num_simd_pairs):
+        var pos = (constant - MFloat[2](Float64(i*2), Float64(i*2+1))) * rwidth
+        pos = (pos - frange * floor(rrange * pos)) * pi
+
+        mask: MBool[2] = pos.lt(pi)
+        temp = mask.select(sin(pos) * sample, 0.0)
+        out[i*2] = temp[0]
+        if i*2+1 < num_speakers:
+            out[i*2+1] = temp[1]
+
+    return out
+
+# XBAP Algorithms
 
 @always_inline
 def dbap2D[
