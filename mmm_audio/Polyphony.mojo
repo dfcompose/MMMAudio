@@ -497,6 +497,7 @@ struct GrainAll(GrainObject):
     var trigger: Bool
     var user_defined_env: List[Tuple[Float64, Float64]]
     var env_trigger: Bool
+    var curve: Float64
 
     def __init__(out self, world: World):
         self.world = world  
@@ -517,6 +518,7 @@ struct GrainAll(GrainObject):
         self.user_defined_env.append((0.5, 1.0))
         self.user_defined_env.append((1.0, 0.0))
         self.env_trigger = False
+        self.curve = 1.0
 
     # These are the functions that need to be implemented for the PolyObject trait:
     def check_active(mut self) -> Bool:
@@ -543,7 +545,8 @@ struct GrainAll(GrainObject):
     start_frame: Int = 0, 
     duration: Float64 = 0.0,
     pan: Float64 = 0.0,
-    gain: Float64 = 1.0):
+    gain: Float64 = 1.0,
+    curve: Float64 = 1.0):
         """Set the Grain's variables.
 
         Args:
@@ -552,6 +555,7 @@ struct GrainAll(GrainObject):
             duration: Duration of the grain in seconds.
             pan: Panning position from -1.0 (left) to 1.0 (right). As this function is used by the panning functions, the pan value is saved to self.pan in this function when a trigger is received, but there is no direct use of it here.
             gain: Amplitude scaling factor for the grain.
+            curve: The curve shape for the user-defined envelope.
         """
         self.rate = rate
         self.start_frame = Float64(start_frame)
@@ -559,6 +563,7 @@ struct GrainAll(GrainObject):
         self.dur = duration
         self.gain = gain
         self.pan = pan
+        self.curve = curve
 
     def next_all[num_chans: Int, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_chans]) -> MFloat[num_chans]:
         """
@@ -583,7 +588,7 @@ struct GrainAll(GrainObject):
         sample = buf_read[interp=Interp.linear, bWrap=bWrap](self.world, buffer, buf_phase)
 
         comptime if win_type == WindowType.user_defined:
-            win = env[win_type=custom_curve](self.world, phase, self.user_defined_env)
+            win = env[win_type=custom_curve](self.world, phase, self.user_defined_env, self.curve)
         else:
             win = win_read[win_type, Interp.linear](self.world, phase)
 
@@ -646,7 +651,8 @@ struct Grain(GrainObject):
     duration: Float64 = 0.0,
     pan: Float64 = 0.0,
     gain: Float64 = 1.0,
-    start_chan: Int = 0):
+    start_chan: Int = 0,
+    curve: Float64 = 1.0):
         """Set the Grain's variables.
 
         Args:
@@ -656,8 +662,9 @@ struct Grain(GrainObject):
             pan: Panning position from -1.0 (left) to 1.0 (right). As this function is used by the panning functions, the pan value is saved to self.pan in this function when a trigger is received, but there is no direct use of it here.
             gain: Amplitude scaling factor for the grain.
             start_chan: The first buffer channel to read from for the grain (default: 0). If num_playback_chans is 2, the grain will read from start_chan and start_chan+1 for the left and right channels, respectively.
+            curve: The curve shape for the user-defined envelope.
         """
-        self.grain.set_vals(rate, start_frame, duration, pan, gain)
+        self.grain.set_vals(rate, start_frame, duration, pan, gain, curve)
         self.start_chan = start_chan
 
     def next_2[

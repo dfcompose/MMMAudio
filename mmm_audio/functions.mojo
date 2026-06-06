@@ -271,6 +271,23 @@ def explin[num_chans: Int, //](input: MFloat[num_chans], in_min: MFloat[num_chan
 @always_inline
 def lincurve[num_chans: Int, //
 ](input: MFloat[num_chans], in_min: MFloat[num_chans], in_max: MFloat[num_chans], out_min: MFloat[num_chans], out_max: MFloat[num_chans], curve: MFloat[num_chans]) -> MFloat[num_chans]:
+    """Maps a linear input to a curved output range based on a curve parameter.
+
+    Args:
+        input: Input value to transform (linear).
+        in_min: Minimum of input range (linear).
+        in_max: Maximum of input range (linear).
+        out_min: Minimum of output range (curved).
+        out_max: Maximum of output range (curved).
+        curve: Curve parameter (-10 to 10 typical range)
+               curve = 0: linear
+               curve > 0: exponential curve
+               curve < 0: logarithmic curve.
+    
+    Returns:
+        Curved output value.
+    """
+
     
     # Handle near-zero curve (linear case)
     curve_near_zero: MBool[num_chans] = abs(curve).lt(0.001)
