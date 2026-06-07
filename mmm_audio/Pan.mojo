@@ -370,32 +370,28 @@ def dbap2D[
 
     # Calculates the covariance of speaker distances 
     
-    # def variance_of_dists[comp_num_speakers: Int, comp_speaker_positions: InlineArray[MFloat[2], comp_num_speakers]]() -> Float64:
-    #     var accum : Float64 = 0.0 
-    #     var dists = InlineArray[Float64, comp_num_speakers](fill=0.0)
-    #     for i in range(comp_num_speakers):
-    #         dist = comp_speaker_positions[i] * comp_speaker_positions[i]
-    #         dist_from_center = sqrt(dist.reduce_add())
-
-    #         dists[i] = dist_from_center
-    #         accum += dist_from_center
+    def variance_of_dists[comp_num_speakers: Int, comp_speaker_positions: InlineArray[MFloat[2], comp_num_speakers]]() -> Float64:
+       
+        var dists = MFloat[next_power_of_two(comp_num_speakers)](0.0)
         
-    #     var mean : Float64 = accum / Float64(comp_num_speakers)
-    #     var variance_accum : Float64 = 0.0
+        for i in range(comp_num_speakers):
+            dist = comp_speaker_positions[i] * comp_speaker_positions[i]
+            dist_from_center = sqrt(dist.reduce_add())
 
-    #     for speaker in dists:
-    #         variance_accum += pow(speaker - mean, 2)
-      
-
-    #     return variance_accum / Float64(comp_num_speakers - 1)
+            dists[i] = dist_from_center
+        
+        var mean : Float64 = dists.reduce_add() / Float64(comp_num_speakers)
+        
+        return pow(dists - mean, 2).reduce_add() / Float64(comp_num_speakers - 1)
+        
     
     comptime vec_weights = array_to_mfloat[simd_out_size, weights]()
-    # comptime speaker_position_variance : Float64 = variance_of_dists[num_speakers, speaker_positions]()
+    comptime speaker_position_variance : Float64 = variance_of_dists[num_speakers, speaker_positions]()
     
     # Calculates the blur factor using the speaker variance to normalize
-    # var blur_sq = pow(max(0.00001, blur) * speaker_position_variance, 2)
+    var blur_sq = pow(max(0.00001, blur * speaker_position_variance), 2)
 
-    var blur_sq = pow(max(0.00001, blur), 2)
+    # var blur_sq = pow(max(0.00001, blur), 2)
 
    # Set dists to 1.0 by default to avoid divide by 0 when calculating k
     var dists = MFloat[simd_out_size](1.0)
