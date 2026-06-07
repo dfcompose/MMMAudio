@@ -39,8 +39,11 @@ trait PolyObject(Movable, Copyable):
         """
         pass
 
-    @doc_hidden
     def reset_Resettable(mut self):
+        """Goes through every object inside of a PolyObject, checks if the object confroms to the PolyReset trait, and if it does, calls the reset function of that object.
+
+        Objects that conform to the PolyReset trait usually need to be reset if a PolyObject is stopped and started. Delays and filters are obvious examples of this. They will have residual information in them when they are stopped, and that information needs to be cleared before the next time they are started.
+        """
         comptime r = reflect[Self]()
         comptime names = r.field_names()
         comptime types = r.field_types()
@@ -50,12 +53,23 @@ trait PolyObject(Movable, Copyable):
             comptime if conforms_to(comptime_field_type, PolyReset):
                 r.field_ref[idx](self).reset()
 
+    @doc_hidden
+    def reset_Resettable[T: PolyReset](mut self, mut *ugens: T):
+        """A helper function for resetting objects that conform to the PolyReset trait. This version of the function takes a variable number of UGens as arguments and resets all of them. This is useful for resetting specific UGens without having to reset every PolyReset UGen in the PolyObject.
+
+        Args:
+            ugens: A variable number of UGens that conform to the PolyReset trait. These are the UGens that will be reset when this function is called.
+        """
+        for ref ugen in ugens:
+            ugen.reset()
+
 trait PolyReset():
     """A trait for UGens that need to be reset when a Poly voice is triggered or released. If a UGen implements this trait."""
     def reset(mut self):
         """A function called when a voice needs to be reset.
         """
         ...
+
 
 struct Poly(Movable, Copyable):
     """A Poly implementation for synths triggered by signals, like TGrains and PitchShift.
