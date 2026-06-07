@@ -27,7 +27,7 @@ struct DistanceBasedPanning(Movable, Copyable):
         self.pos[1] = linlin(self.world[].mouse_y, 0.0, 1.0, 1.0, -1.0)
         
         # 4 speaker setup
-        self.world[].print(self.pos)
+       
         comptime speakers : InlineArray[MFloat[2], 4] = [
             MFloat[2](-1, 1),
             MFloat[2](1, 1),
