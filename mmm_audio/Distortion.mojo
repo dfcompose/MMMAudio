@@ -572,3 +572,29 @@ struct BuchlaWavefolder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOv
                 y = self._next1(x2, amp)
                 self.oversampling.add_sample(y)
             return self.oversampling.get_sample()
+
+struct SampleAndHold[num_chans: Int = 1](Movable, Copyable):
+    """A trigger that outputs True for a specified number of samples or amount of time after receiving a trigger signal."""
+
+    var hold: MFloat[Self.num_chans]
+    var rbd: RisingBoolDetector[Self.num_chans]
+
+    def __init__(out self):
+        self.hold = MFloat[Self.num_chans](0.0)
+        self.rbd = RisingBoolDetector[Self.num_chans]()
+
+    def next(mut self, input: MFloat[Self.num_chans], toggle: MBool[Self.num_chans]) -> MFloat[Self.num_chans]:
+        """Process the input signal and trigger, returning the held output signal.
+
+        Args:
+            input: The input sample to be held.
+            toggle: A boolean signal. When switching from false to true, the latch updates its output to the current input sample and holds it for the specified number of samples.`
+
+        Returns:
+            The currently held sample.
+        """
+        mask = self.rbd.next(toggle)
+        self.hold = mask.select(input, self.hold)
+        out = toggle.select(self.hold, input)
+        return out
+    
