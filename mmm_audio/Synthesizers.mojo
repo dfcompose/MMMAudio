@@ -40,7 +40,7 @@ struct PAF[
         self.world = world
 
         self.phasor = Phasor[Self.num_chans](self.world)
-        self.phasor.freq_mul = TimesOversampling.get_freq_mul(self.world,Self.ov_samp)
+        self.phasor.set_oversampling(Self.ov_samp)
         
         self.cos1 = Osc[Self.num_chans, Self.interp](self.world)
         self.cos2 = Osc[Self.num_chans, Self.interp](self.world)
