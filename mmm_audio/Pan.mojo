@@ -456,6 +456,9 @@ def vbap2D[num_speakers: Int, simd_out_size: Int, speaker_positions: InlineArray
     Args:
         sample: The mono signal to be panned.
         az: The angle of the source in radians.
+
+    Returns:
+        MFloat[simd_out_size]: The panned output sample for each speaker.
     """
     
     #This is pretty brute force right now. Could maybe be more elegant?
