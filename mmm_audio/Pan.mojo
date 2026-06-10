@@ -563,7 +563,8 @@ def vbap2D[num_speakers: Int, simd_out_size: Int, speaker_positions: InlineArray
             if gain_factors[i][0] >= 0.0 and gain_factors[i][1] >= 0.0:
                 active_index = i 
                 active_pair = speaker_pairs[active_index]
-                active_gains = gain_factors[active_index]
+                scaled_gains = (sqrt(gain_factors[active_index].reduce_add()) * gain_factors[active_index]) / (sqrt(pow(gain_factors[active_index], 2).reduce_add()))
+                active_gains = scaled_gains
                 break
             elif smallest_gain > min(gain_factors[largest_small_gain][0], gain_factors[largest_small_gain][1]):
                 largest_small_gain = i 
