@@ -30,10 +30,10 @@ struct VectorBasedPanning(Movable, Copyable):
         comptime offset = 0.0
         
         comptime speakers : InlineArray[Float64, 4] = [
-            deg_2_rad(-65),
-            deg_2_rad(65),
-            deg_2_rad(-110),
-            deg_2_rad(110)
+            deg_to_rad(-65),
+            deg_to_rad(65),
+            deg_to_rad(-110),
+            deg_to_rad(110)
         ]
         
         
@@ -69,7 +69,7 @@ struct VectorBasedPanning(Movable, Copyable):
 
 
 
-def deg_2_rad(degrees: Float64) -> Float64:
+def deg_to_rad(degrees: Float64) -> Float64:
     """
     Converts from degrees to radians.
     """
@@ -77,7 +77,7 @@ def deg_2_rad(degrees: Float64) -> Float64:
 
 
 
-def rad_2_deg(radians: Float64) -> Float64:
+def rad_to_deg(radians: Float64) -> Float64:
     """
     Converts from radians to degrees.
     """
