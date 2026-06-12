@@ -230,6 +230,15 @@ struct Osc[num_chans: Int = 1, interp: Interp = Interp.linear, ov_samp: TimesOve
         Returns:
             The next sample of the oscillator output.
         """
+        comptime if osc_type == OscType.sine:
+            self.world[].make_sine_osc = True
+        elif osc_type == OscType.triangle:
+            pass
+        elif osc_type == OscType.saw:
+            pass
+        elif osc_type == OscType.square:
+            pass
+
         var trig_mask = MBool[self.num_chans](fill=trig)
             
         out = MFloat[self.num_chans](0.0)

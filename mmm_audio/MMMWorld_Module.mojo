@@ -28,7 +28,6 @@ struct MMMWorld(Movable, Copyable):
     var block_state: Int
     var top_of_block: Bool
 
-
     var sinc_interpolator: SincInterpolator[4, 14]
 
     var last_print_time: Float64
@@ -36,6 +35,8 @@ struct MMMWorld(Movable, Copyable):
     var last_print_flag: Int
 
     var print_counter: UInt16
+
+    var make_sine_osc: Bool
 
     def __init__(out self, sample_rate: Float64, 
         block_size: Int = 128, 
@@ -84,6 +85,8 @@ struct MMMWorld(Movable, Copyable):
         self.print_counter = 0
 
         self.sinc_interpolator = SincInterpolator[4,14]()
+
+        self.make_sine_osc = False
 
         print("MMMWorld initialized with sample rate:", self.sample_rate, "and block size:", self.block_size)
 
