@@ -38,6 +38,11 @@ struct SIMDBuffer[num_chans: Int = 2](Movable, Copyable):
     def at_phase[interp: Interp = Interp.none, bWrap: Bool = True, mask: Int = 0](self, world: World, phase: Float64, prev_phase: Float64 = 0) -> MFloat[Self.num_chans]:
         """Read a value from the SIMDBuffer at a given phase using sinc interpolation.
 
+        Parameters:
+            interp: Interpolation method to use (from [Interp](MMMWorld.md#struct-interp) enum).
+            bWrap: Whether to wrap indices that go out of bounds.
+            mask: Bitmask for wrapping indices (if applicable). If 0, standard modulo wrapping is used. If non-zero, bitwise AND wrapping is used (only valid for power-of-two lengths).
+
         Args:
             world: Pointer to the MMMWorld instance.
             phase: The phase to read at, where 0.0 is the beginning of the buffer and 1.0 is the end of the buffer.
@@ -198,6 +203,11 @@ struct Buffer(Movable, Copyable):
 
     def at_phase[interp: Interp = Interp.none, bWrap: Bool = True, mask: Int = 0](self, world: World, chan: Int, phase: Float64, prev_phase: Float64 = 0) -> MFloat[1]:
         """Read a value from the Buffer at a given phase using sinc interpolation.
+
+        Parameters:
+            interp: Interpolation method to use (from [Interp](MMMWorld.md#struct-interp) enum).
+            bWrap: Whether to wrap indices that go out of bounds.
+            mask: Bitmask for wrapping indices (if applicable). If 0, standard modulo wrapping is used. If non-zero, bitwise AND wrapping is used (only valid for power-of-two lengths).
 
         Args:
             world: Pointer to the MMMWorld instance.
