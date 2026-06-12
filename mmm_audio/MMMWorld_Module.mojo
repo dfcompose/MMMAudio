@@ -122,10 +122,6 @@ struct MMMWorld(Movable, Copyable):
                 comptime for i in range(values.__len__()):
                     print(values[i], end=sep if i < values.__len__() - 1 else end)
 
-# Enum-like structs for selecting settings
-# ========================================
-# once Mojo has enums, these will probably be converted to enums
-
 @fieldwise_init
 struct Interp(Equatable, ImplicitlyCopyable):
     """Interpolation types for use in various UGens.

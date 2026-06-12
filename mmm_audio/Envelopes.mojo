@@ -379,11 +379,11 @@ struct ASREnv(Movable, Copyable):
             interp: Interpolation type to apply to the window. Default is Interp.none. See `Interp` struct for available interpolation types.
 
         Args:
-            attack: (Float64): Attack time in seconds.
-            sustain: (Float64): Sustain level (0 to 1).
-            release: (Float64): Release time in seconds.
-            gate: (Bool): Gate signal (True or False).
-            curve: (MFloat[2]): Can pass a Float64 for equivalent curve on rise and fall or MFloat[2] for different rise and fall curve. Positive values for convex "exponential" curves, negative for concave "logarithmic" curves.
+            attack: Attack time in seconds.
+            sustain: Sustain level (0 to 1).
+            release: Release time in seconds.
+            gate: Gate signal (True or False).
+            curve: Can pass a Float64 for equivalent curve on rise and fall or MFloat[2] for different rise and fall curve. Positive values for convex "exponential" curves, negative for concave "logarithmic" curves.
 
         Returns:
             The current ASR envelope value.
