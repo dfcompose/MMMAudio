@@ -87,27 +87,51 @@ struct MMMWorld(Movable, Copyable):
             print("MMMWorld initialized with sample rate:", self.sample_rate, "and block size:", self.world_info.value()[].block_size)
 
     def mouse_x(self) -> Float64:
-        """Returns the current mouse x position as a value between 0.0 and 1.0."""
+        """Returns the current mouse x position as a value between 0.0 and 1.0.
+        
+        Returns:
+            The current mouse x position as a value between 0.0 and 1.0.
+        """
         return self.world_info.value()[].mouse_x
 
     def mouse_y(self) -> Float64:
-        """Returns the current mouse y position as a value between 0.0 and 1.0."""
+        """Returns the current mouse y position as a value between 0.0 and 1.0.
+        
+        Returns:
+            The current mouse y position as a value between 0.0 and 1.0.
+        """
         return self.world_info.value()[].mouse_y
 
     def top_of_block(self) -> Bool:
-        """Returns true if the current sample is the first sample of the audio block."""
+        """Returns true if the current sample is the first sample of the audio block.
+        
+        Returns:
+            True if the current sample is the first sample of the audio block, false otherwise.
+        """
         return self.world_info.value()[].top_of_block
     
     def block_state(self) -> Int:
-        """Returns an integer that increments by 1 at the start of each audio block. Resets to 0 after reaching 2^31 - 1."""
+        """Returns the block state.
+        
+        Returns:
+            An integer that increments by 1 at the start of each audio block. Resets to 0 after reaching 2^31 - 1.
+        """
         return self.world_info.value()[].block_state
 
     def num_in_chans(self) -> Int:
-        """Returns the number of input channels."""
+        """Returns the number of input channels.
+        
+        Returns:
+            The number of input channels.
+        """
         return self.world_info.value()[].num_in_chans
 
     def num_out_chans(self) -> Int:
-        """Returns the number of output channels."""
+        """Returns the number of output channels.
+        
+        Returns:
+            The number of output channels.
+        """
         return self.world_info.value()[].num_out_chans
 
     def sound_in(self, chan: Int) -> Float64:
@@ -172,6 +196,9 @@ def create_subworld(world: World, times_ov_samp: TimesOversampling = TimesOversa
     Args:
         world: A pointer to an existing World struct.
         times_ov_samp: A [TimesOversampling](MMMWorld.md#struct-timesoversampling) struct to indicate times oversampling.
+
+    Returns:
+        A pointer to the MMMWorld struct.
     """
     new_world = alloc[MMMWorld](1) 
     sample_rate = world[].sample_rate * Float64(times_ov_samp.times)
