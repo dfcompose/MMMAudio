@@ -36,7 +36,7 @@ struct Windows(Movable, Copyable):
         Returns:
             MFloat[2] where the first element is the left channel multiplier and the second element is the right channel multiplier.
         """
-        return SpanInterpolator.read[1,interp,True,self.mask](world,self.hann, pan * 255.0, 0.0)
+        return SpanInterpolator.read[2,interp,True,self.mask](world,self.pan2, pan * 255.0, 0.0)
 
     def at_phase[num_chans: Int, window_type: WindowType, interp: Interp = Interp.none](self, world: World, phase: MFloat[num_chans], prev_phase: MFloat[num_chans] = 0.0) -> MFloat[num_chans]:
         """Get a window value at the given normalized phase.

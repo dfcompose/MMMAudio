@@ -5,7 +5,7 @@ struct FM4(Movable, Copyable):
 
     comptime times_oversampling = TimesOversampling.x4
 
-    var over: Oversampler[2, Self.times_oversampling]
+    var over: Downsampler[2, Self.times_oversampling]
 
     var osc0: Osc[1, Interp.sinc]
     var osc1: Osc[1, Interp.sinc]
@@ -28,11 +28,11 @@ struct FM4(Movable, Copyable):
     var osc_frac: List[MFloat[1]]
 
     def __init__(out self, world: World) :
-        # create a subworld for the oversampling to live in
+        # create a subworld for the downsampling to live in
         self.oversampled_world = create_subworld(world, Self.times_oversampling)
 
-        # the oversampler exists in the main world!
-        self.over = Oversampler[2, Self.times_oversampling](world)
+        # the oversampler exists in the main world! don't give it the oversampled world!
+        self.over = Downsampler[2, Self.times_oversampling](world)
 
         # the oscillators live in the oversampled world since they need to run at the oversampled rate
         self.osc0 = Osc[1, Interp.sinc](self.oversampled_world)
@@ -76,7 +76,7 @@ struct FM4(Movable, Copyable):
             # feedback all the oscillators for the next cycle
             self.fb = [osc0, osc1, osc2, osc3]
 
-            # add the sample to the oversampling buffer (we only hear the first two oscillators)
+            # add the sample to the downsampling buffer (we only hear the first two oscillators)
             self.over.add_sample(MFloat[2](osc0, osc1))
         
 

@@ -11,7 +11,7 @@ struct PAF[
     Parameters:
         num_chans: Number of channels.
         interp: Interpolation method. See [Interp](MMMWorld.md/#struct-interp) struct for options.
-        ov_samp: An [oversampling](MMMWorld.md#struct-timesoversampling) struct to indicate times oversampling.
+        ov_samp: A [TimesOversampling](MMMWorld.md#struct-timesoversampling) struct to indicate times oversampling.
         wrap_gaussian: Whether to wrap indices that go out of bounds in the gaussian window. Puckette's design only uses half of the table, but enabling wrap_gaussian uses the entire table, resulting in a wider pallette of timbres.
     """
 
@@ -24,7 +24,7 @@ struct PAF[
     var sin_last_phase: MFloat[Self.num_chans]
     var cos1_last_phase: MFloat[Self.num_chans]
 
-    var oversampler: Optional[Oversampler[Self.num_chans, Self.ov_samp]]
+    var downsampler: Optional[Downsampler[Self.num_chans, Self.ov_samp]]
 
     def __init__(out self, world: World):
         """Initialize the phase-aligned formant synthesizer.
@@ -42,10 +42,10 @@ struct PAF[
         self.sin_last_phase = 0.0
         self.cos1_last_phase = MFloat[self.num_chans](0.0)
 
-        self.oversampler = None
+        self.downsampler = None
         comptime if Self.ov_samp != TimesOversampling.none:
-            self.oversampler = Optional[Oversampler[Self.num_chans, Self.ov_samp]](
-                Oversampler[Self.num_chans, Self.ov_samp](
+            self.downsampler = Optional[Downsampler[Self.num_chans, Self.ov_samp]](
+                Downsampler[Self.num_chans, Self.ov_samp](
                     world # use main world for oversampler, not the oversampled subworld
                 )
             )
@@ -104,12 +104,12 @@ struct PAF[
             self.sin_last_phase = phasor
             self.cos1_last_phase = cos1_phase
 
-            # add sample to oversampling buffer each iteration
+            # add sample to downsampling buffer each iteration
             comptime if Self.ov_samp != TimesOversampling.none:
-                self.oversampler.value().add_sample(out)
+                self.downsampler.value().add_sample(out)
 
-        # retrive sample from oversampling buffer only if oversampling is enabled
+        # retrieve sample from downsampling buffer only if oversampling is enabled
         comptime if Self.ov_samp != TimesOversampling.none:
-            return self.oversampler.value().get_sample()
+            return self.downsampler.value().get_sample()
         else:
             return out

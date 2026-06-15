@@ -1,10 +1,10 @@
 from mmm_audio import *
 
-struct Oversampler[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.none](Movable, Copyable, PolyReset):
-    """A struct that collects ` times_oversampling` samples and then downsamples them using a low-pass filter. Add a sample for each oversampling iteration with `add_sample()`, then get the downsampled output with `get_sample()`. VERY IMPORTANT, when initializing this struct, use the main world, not the oversampled subworld. The Oversampler exists outside of the oversampled subworld!
+struct Downsampler[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.none](Movable, Copyable, PolyReset):
+    """A struct that collects `times_oversampling` samples and then downsamples them using a low-pass filter. Add a sample for each oversampling iteration with `add_sample()`, then get the downsampled output with `get_sample()`. VERY IMPORTANT, when initializing this struct, use the main world, not the oversampled subworld. The Downsampler exists outside of the oversampled subworld!
 
     Parameters:
-        num_chans: Number of channels for the oversampling buffer.
+        num_chans: Number of channels for the downsampling buffer.
         ov_samp: A [TimesOversampling](MMMWorld.md#struct-timesoversampling) struct to indicate times oversampling.
     """
 
@@ -13,7 +13,7 @@ struct Oversampler[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversam
     var lpf: OS_LPF4[Self.num_chans]
 
     def __init__(out self, world: World):
-        """Initialize the Oversampler struct.
+        """Initialize the Downsampler struct.
 
         Args:
             world: Pointer to the MMMWorld instance. VERY IMPORTANT to use the main world, not the oversampled subworld, for this struct.
@@ -60,7 +60,7 @@ struct Upsampler[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampl
 
     Parameters:
         num_chans: Number of channels for the upsampler.
-        ov_samp: An [oversampling](MMMWorld.md#struct-timesoversampling) struct to indicate times oversampling.
+        ov_samp: A [TimesOversampling](MMMWorld.md#struct-timesoversampling) struct to indicate times oversampling.
     """
     var lpf: OS_LPF4[Self.num_chans]
 

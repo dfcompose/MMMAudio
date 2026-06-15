@@ -9,7 +9,6 @@ struct BuchlaWaveFolder(Movable, Copyable):
 
     def __init__(out self, world: World):
         self.world = world
-        # for efficiency we set the interpolation and oversampling in the constructor
         self.osc = Osc[2](self.world)
         self.lag = Lag(self.world, 0.1)
         self.m = Messenger(self.world)

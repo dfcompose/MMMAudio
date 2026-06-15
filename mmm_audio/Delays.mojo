@@ -438,13 +438,13 @@ struct Allpass[num_chans: Int = 1, interp: Interp = Interp.linear](Tapable, Poly
 struct FB_Delay[num_chans: Int = 1, interp: Interp = Interp.lagrange4, ADAA_dist: Bool = False, ov_samp: TimesOversampling = TimesOversampling.none](Tapable, PolyReset):
     """A feedback delay structured like a Comb filter, but with possible feedback coefficient above 1 due to an integrated tanh function.
     
-    By default, Anti-aliasing is disabled and no [oversampling](Oversampler.md) is applied, but this can be changed by setting the ADAA_dist and ov_samp template parameters.
+    By default, Anti-aliasing is disabled and no oversampling is applied, but this can be changed by setting the ADAA_dist and ov_samp template parameters.
     
     Parameters:
       num_chans: Size of the SIMD vector.
       interp: The interpolation method to use. See the struct [Interp](MMMWorld.md#struct-interp) for interpolation options.
       ADAA_dist: Whether to apply ADAA distortion to the feedback signal instead of standard tanh.
-      ov_samp: The [oversampling](MMMWorld.md#struct-timesoversampling) for ADAA distortion.
+      ov_samp: The [TimesOversampling](MMMWorld.md#struct-timesoversampling) for ADAA distortion.
     """
 
     var world: World

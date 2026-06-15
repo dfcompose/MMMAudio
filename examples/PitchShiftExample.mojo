@@ -23,7 +23,7 @@ struct PitchShiftExample(Movable, Copyable):
      
     def __init__(out self, world: World):
         print("Initializing PitchShiftExample")
-        self.world = create_subworld(world, TimesOversampling.none)
+        self.world = world
         print("Subworld created for PitchShiftExample with sample rate:", self.world[].sample_rate)
         self.pitch_shift = PitchShift[num_chans=2](self.world, 2.0) # the duration of the buffer needs to == grain size*(max_pitch_shift-1).
         self.messenger = Messenger(self.world)

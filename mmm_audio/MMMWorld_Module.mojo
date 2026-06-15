@@ -171,7 +171,7 @@ def create_subworld(world: World, times_ov_samp: TimesOversampling = TimesOversa
 
     Args:
         world: A pointer to an existing World struct.
-        times_ov_samp: The amount of oversampling to use.
+        times_ov_samp: A [TimesOversampling](MMMWorld.md#struct-timesoversampling) struct to indicate times oversampling.
     """
     new_world = alloc[MMMWorld](1) 
     sample_rate = world[].sample_rate * Float64(times_ov_samp.times)

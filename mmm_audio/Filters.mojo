@@ -801,7 +801,7 @@ struct VAMoogLadder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversa
     Implementation based on the Virtual Analog design by Vadim Zavalishin in 
     "The Art of VA Filter Design"
 
-    This implementation supports 4-pole lowpass filtering with optional [oversampler](Oversampler.md).
+    This implementation supports 4-pole lowpass filtering with optional [oversampler](Downsampler.md).
 
     Parameters:
         num_chans: Number of channels to process in parallel.
@@ -813,7 +813,7 @@ struct VAMoogLadder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversa
     var last_2: MFloat[Self.num_chans]
     var last_3: MFloat[Self.num_chans]
     var last_4: MFloat[Self.num_chans]
-    var oversampler: Oversampler[Self.num_chans, Self.ov_samp]
+    var downsampler: Downsampler[Self.num_chans, Self.ov_samp]
     var upsampler: Upsampler[Self.num_chans, Self.ov_samp]
 
     def __init__(out self, world: World):
@@ -828,7 +828,7 @@ struct VAMoogLadder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversa
         self.last_2 = MFloat[Self.num_chans](0.0)
         self.last_3 = MFloat[Self.num_chans](0.0)
         self.last_4 = MFloat[Self.num_chans](0.0)
-        self.oversampler = Oversampler[Self.num_chans, Self.ov_samp](world)
+        self.downsampler = Downsampler[Self.num_chans, Self.ov_samp](world)
         self.upsampler = Upsampler[Self.num_chans, Self.ov_samp](world)
 
     @doc_hidden
@@ -920,8 +920,8 @@ struct VAMoogLadder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversa
                 comptime if Self.ov_samp == TimesOversampling.none:
                     return lp4
                 else:
-                    self.oversampler.add_sample(lp4)
-            return self.oversampler.get_sample()
+                    self.downsampler.add_sample(lp4)
+            return self.downsampler.get_sample()
 
 struct Reson[num_chans: Int = 1](Movable, Copyable, PolyReset):
     """Resonant filter with lowpass, highpass, and bandpass modes.
