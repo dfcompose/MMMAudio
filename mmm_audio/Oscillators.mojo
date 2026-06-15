@@ -820,14 +820,6 @@ struct Line[num_chans: Int = 1, linexpcurve: Int = 0](Movable, Copyable):
         else:
             return linlin(self.phase, 0.0, 1.0, start, end)
 
-    def set_oversampling(mut self, times_oversampling: TimesOversampling):
-        """Sets times oversampling for the oscillator when it is used in an Oversampling loop. This is not for when using the oscillator with the built-in oversampling, but rather for when the oscillator is used as part of a custom oversampling implementation.
-
-        Args:
-            times_oversampling: A [TimesOversampling](MMMWorld.md#struct-timesoversampling) struct to indicate times oversampling.
-        """
-        self.freq_mul = TimesOversampling.get_freq_mul(self.world, times_oversampling)
-
 comptime OscBuffersSize: Int = 16384  # 2^14
 comptime OscBuffersMask: Int = 16383  # 2^14 - 1
 
