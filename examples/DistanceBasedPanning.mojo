@@ -26,9 +26,6 @@ struct DistanceBasedPanning(Movable, Copyable):
         self.pos[0] = linlin(self.world[].mouse_x(), 0.0, 1.0, -1.0, 1.0)
         self.pos[1] = linlin(self.world[].mouse_y(), 0.0, 1.0, 1.0, -1.0)
         
-        # 4 speaker setup
-
-        self.pos[1] = linlin(self.world[].mouse_y(), 0.0, 1.0, 1.0, -1.0)
         
         # 4 speaker setup
        
