@@ -300,7 +300,7 @@ def dbap2D[
         rolloff: Float64 = 6
     ) -> MFloat[simd_out_size]:
     """
-    Implements DBAP (Distance Based Amplitude Panning). Pans a mono sample to N speakers of arbitrary positions in meters.
+    Implements 2D DBAP (Distance Based Amplitude Panning). Pans a mono sample to N speakers of arbitrary positions in meters.
     For more on DBAP see the paper written by Trond Lossius, Pascal Baltazar, and Theo de la Hague.
     https://jamoma.org/publications/attachments/icmc2009-dbap-rev1.pdf .
 
@@ -393,6 +393,123 @@ def dbap2D[
 
     return out
 
+
+
+@always_inline
+def dbap3D[
+    num_speakers: Int, 
+    simd_out_size: Int,
+    speaker_positions: InlineArray[MFloat[4], num_speakers],
+    weights: InlineArray[Float64, num_speakers]]
+    (
+        sample: Float64, 
+        pos: MFloat[4], 
+        blur: Float64 = 0.1, 
+        rolloff: Float64 = 6
+    ) -> MFloat[simd_out_size]:
+    """
+    Implements 3D DBAP (Distance Based Amplitude Panning). Pans a mono sample to N speakers of arbitrary positions in meters.
+    For more on DBAP see the paper written by Trond Lossius, Pascal Baltazar, and Theo de la Hague.
+    https://jamoma.org/publications/attachments/icmc2009-dbap-rev1.pdf .
+
+    Parameters:
+        num_speakers: The number of speakers as an integer.
+        simd_out_size: Must be a power of 2 and greater than num_speakers.
+        speaker_positions: The speaker positions as an InlineArray of Tuple[Float64] x/y/z coordinates in meters from a center position.
+        weights: An InlineArray of Float64s (between 0.0 and 1.0) defining speaker weights for DBAP. Speaker weights allow for a source to be restricted to a subset of speakers. Speaker weights of 0.0 will disallow a source from playing through that speaker.
+
+    Args:
+        sample: Mono input sample.
+        pos: X/Y position of the source from center in meters as a List[Float64].
+        blur: Blurs the source, causing it to spread to more speakers. Values must be greater than or equal to 0, with 0 being the most localizable and values > 0 becoming less and less localizable. There is no limit to the amount of blur but values over 5 have diminishing returns.
+        rolloff: The amplitude rolloff in dB, this must be > 0.0. 6.0 equals the inverse distance law for sound in an open field. Lower values will decrease the attenuation of the signal over distance, while larger values will increase this attenuation.
+    
+    Returns:
+        MFloat[simd_out_size]: The panned output sample for each speaker.
+    """
+    comptime assert num_speakers <= simd_out_size, "num_speakers must be less than or equal to simd_out_size for dbap2D"
+    comptime assert simd_out_size & (simd_out_size - 1) == 0, "simd_out_size must be a power of two for dbap2D"
+
+    # Calculates the covariance of speaker distances 
+    
+
+    def variance_of_dists[comp_num_speakers: Int, comp_speaker_positions: InlineArray[MFloat[4], comp_num_speakers]]() -> Float64:
+       
+        var dists = MFloat[next_power_of_two(comp_num_speakers)](0.0)
+        
+        for i in range(comp_num_speakers):
+            dist = comp_speaker_positions[i] * comp_speaker_positions[i]
+            dist_from_center = sqrt(dist.reduce_add())
+
+            dists[i] = dist_from_center
+        
+        var mean : Float64 = dists.reduce_add() / Float64(comp_num_speakers)
+        
+        return pow(dists - mean, 2).reduce_add() / Float64(comp_num_speakers)
+        
+    
+    comptime vec_weights = array_to_mfloat[simd_out_size, weights]()
+    comptime speaker_position_variance : Float64 = variance_of_dists[num_speakers, speaker_positions]()
+    
+    # Calculates the blur factor using the speaker variance to normalize
+    var blur_sq : Float64
+
+    # comptime if speaker_position_variance == 0:
+    #         blur_sq = pow(max(0.0001, blur), 2)
+    #     else:
+    #         blur_sq = pow(max(0.0001, blur * speaker_position_variance), 2)
+
+    blur_sq = pow(max(0.0001, blur * speaker_position_variance), 2)
+    # var blur_sq = pow(max(0.00001, blur), 2)
+
+   # Set dists to 1.0 by default to avoid divide by 0 when calculating k
+    var dists = MFloat[simd_out_size](1.0)
+ 
+    # Calculates the k coefficient and gets distances for every speaker from the source
+    for i in range(num_speakers):
+        speaker = speaker_positions[i] - pos
+        xyz = speaker * speaker
+        dists[i] = sqrt(xyz.reduce_add() + blur_sq)  
+
+    # SIMD optimization 
+    comptime num_pairs = num_speakers // 2
+
+    # Calculates the a coefficient given a rolloff in dB
+    var a = rolloff/6.02059991328
+    var two_a = 2 * a
+    var denom = 0.0
+    for i in range(num_pairs):
+        var w = MFloat[2](vec_weights[i*2], vec_weights[i*2+1])
+        var d = MFloat[2](dists[i*2], dists[i*2+1])
+
+        denom += ((w * w) / pow(d, two_a)).reduce_add()
+
+    comptime if num_speakers % 2 != 0:
+        denom += (vec_weights[num_speakers - 1] * vec_weights[num_speakers - 1]) / pow(dists[num_speakers - 1], two_a)
+
+    k = 1 / sqrt(denom)
+
+    out = MFloat[simd_out_size](0.0)
+    for i in range(num_pairs):
+        temp = k * MFloat[2](vec_weights[i*2], vec_weights[i*2+1]) / pow(MFloat[2](dists[i*2], dists[i*2+1]), a) * sample
+        out[i*2] = temp[0]
+        out[i*2+1] = temp[1]
+    comptime if num_speakers % 2 != 0:
+        out[num_speakers - 1] = k * vec_weights[num_speakers - 1] / pow(dists[num_speakers - 1], a) * sample
+
+
+    # out = MFloat[simd_out_size](blur_sq)
+
+    return out
+
+
+
+
+
+
+
+
+
 # There are multiple versions of vbap2D for using x/y coordinates or azimuth in radians
 
 @always_inline
@@ -415,7 +532,10 @@ def vbap2D[num_speakers: Int, simd_out_size: Int, speaker_positions: InlineArray
     Returns:
         MFloat[simd_out_size]: The panned output sample for each speaker.
     """
-    
+    comptime assert num_speakers <= simd_out_size, "num_speakers must be less than or equal to simd_out_size for vbap2D"
+    comptime assert simd_out_size & (simd_out_size - 1) == 0, "simd_out_size must be a power of two for vbap2D"
+
+
     #This is pretty brute force right now. Could maybe be more elegant?
     def calc_speaker_unit_vectors() -> InlineArray[MFloat[2], num_speakers]:
         var speaker_vectors = InlineArray[MFloat[2], num_speakers](fill=MFloat[2](0.0,0.0))
