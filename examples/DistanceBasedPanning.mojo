@@ -9,7 +9,7 @@ struct DistanceBasedPanning(Movable, Copyable):
     var messenger: Messenger
     var pos: MFloat[2]
     var filt: Reson[1]
-
+    var height: Float64
 
     def __init__(out self, world: World):
         self.world = world
@@ -17,33 +17,55 @@ struct DistanceBasedPanning(Movable, Copyable):
         self.filt = Reson[1](world)
         self.messenger = Messenger(self.world)
         self.pos = [0, 0]
+        self.height = 0
 
     def next(mut self) -> MFloat[8]:
         
         comptime max_simd = 8
 
         # self.messenger.update("pos", self.pos)
+        self.messenger.update("height", self.height)
         self.pos[0] = linlin(self.world[].mouse_x(), 0.0, 1.0, -1.0, 1.0)
         self.pos[1] = linlin(self.world[].mouse_y(), 0.0, 1.0, 1.0, -1.0)
         
         
         # 4 speaker setup
        
-        comptime speakers : InlineArray[MFloat[2], 4] = [
-            MFloat[2](-1, 1),
-            MFloat[2](1, 1),
-            MFloat[2](-1, -1),
-            MFloat[2](1, -1)
+        # comptime speakers : InlineArray[MFloat[2], 4] = [
+        #     MFloat[2](-1, 1),
+        #     MFloat[2](1, 1),
+        #     MFloat[2](-1, -1),
+        #     MFloat[2](1, -1)
+        # ]
+        # comptime weights : InlineArray[Float64, 4] = [
+        #     1,1,1,1
+        # ]
+
+        # sig = self.dust.next(10, 40) * 0.5
+        # sig = self.filt.bpf(sig, 1200, 10.0, 1.0)
+
+        # out = dbap2D[4, max_simd, speakers, weights](sig, self.pos, 0.1)
+        
+        # 8 speaker cube (3D)
+
+        comptime speakers : InlineArray[MFloat[4], 8] = [
+            MFloat[4](-1, 0, 1),
+            MFloat[4](1, 0, 1),
+            MFloat[4](-1, 0, -1),
+            MFloat[4](1, 0, -1),
+            MFloat[4](-1, 1, 1),
+            MFloat[4](1, 1, 1),
+            MFloat[4](-1, 1, -1),
+            MFloat[4](1, 1, -1)
         ]
-        comptime weights : InlineArray[Float64, 4] = [
-            1,1,1,1
+        comptime weights : InlineArray[Float64, 8] = [
+            1,1,1,1,1,1,1,1
         ]
 
         sig = self.dust.next(10, 40) * 0.5
         sig = self.filt.bpf(sig, 1200, 10.0, 1.0)
 
-        out = dbap2D[4, max_simd, speakers, weights](sig, self.pos, 0.1)
-        
+        out = dbap3D[8, max_simd, speakers, weights](sig, MFloat[4](self.pos[0], self.height, self.pos[1]), 0.1)
 
         #7 speaker setup
 
