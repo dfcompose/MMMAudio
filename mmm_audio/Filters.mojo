@@ -31,6 +31,21 @@ struct Lag[num_chans: Int = 1](Movable, Copyable):
         self.lag_time = 0
         self.input = MFloat[Self.num_chans](0.0)
         self.set_lag_time(lag_time)
+
+    def __init__(out self, sr: Float64, lag_time: MFloat[Self.num_chans] = MFloat[Self.num_chans](0.02)):
+        """Initialize the lag processor with given lag time in seconds.
+
+        Args:
+            sr: Sample rate in Hz.
+            lag_time: SIMD vector specifying lag time in seconds for each channel.
+        """
+        
+        self.sample_rate = sr
+        self.lagged = MFloat[Self.num_chans](0.0)
+        self.b1 = 0
+        self.lag_time = 0
+        self.input = MFloat[Self.num_chans](0.0)
+        self.set_lag_time(lag_time)
         
     @always_inline
     def next(mut self, input: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
@@ -86,6 +101,9 @@ struct Lags[num_lags: Int](Movable, Copyable):
     def __init__(out self, world: World, lag_time: Float64):
         self.lags = [Lag[Self.simd_width](world, lag_time) for _ in range(Self.num_simd)]
 
+    def __init__(out self, sr: Float64, lag_time: Float64):
+        self.lags = [Lag[Self.simd_width](sr, lag_time) for _ in range(Self.num_simd)]
+
     def next(mut self, vals: Span[MFloat[1], ...]):
         """Process a Span (List or InlineArray) of Floats through the lags.
 
@@ -99,6 +117,15 @@ struct Lags[num_lags: Int](Movable, Copyable):
                 comptime if idx < Self.num_lags:
                     simd_val[j] = vals[idx]
             _ = self.lags[i].next(simd_val)
+
+    def set_lag_time(mut self, lag: Float64):
+        """Set a new lag time in seconds for all lags.
+
+        Args:
+            lag: New lag time in seconds.
+        """
+        for i in range(Self.num_simd):
+            self.lags[i].set_lag_time(lag)
 
     def __getitem__(self, idx: Int) -> Float64:
         simd_index = idx // Self.simd_width
