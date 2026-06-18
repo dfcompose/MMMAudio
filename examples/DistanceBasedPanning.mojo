@@ -23,10 +23,10 @@ struct DistanceBasedPanning(Movable, Copyable):
         
         comptime max_simd = 8
 
-        # self.messenger.update("pos", self.pos)
+        self.messenger.update("pos", self.pos)
         self.messenger.update("height", self.height)
         self.pos[0] = linlin(self.world[].mouse_x(), 0.0, 1.0, -1.0, 1.0)
-        self.pos[1] = linlin(self.world[].mouse_y(), 0.0, 1.0, 1.0, -1.0)
+        self.pos[1] = linlin(self.world[].mouse_y(), 0.0, 1.0, -1.0, 1.0)
         
         
         # 4 speaker setup
@@ -49,24 +49,24 @@ struct DistanceBasedPanning(Movable, Copyable):
         # 8 speaker cube (3D)
 
         comptime speakers : InlineArray[MFloat[4], 8] = [
-            MFloat[4](-1, 0, 1),
-            MFloat[4](1, 0, 1),
-            MFloat[4](-1, 0, -1),
-            MFloat[4](1, 0, -1),
-            MFloat[4](-1, 1, 1),
-            MFloat[4](1, 1, 1),
-            MFloat[4](-1, 1, -1),
-            MFloat[4](1, 1, -1)
+            MFloat[4](-1, -2.5, 1, 0),
+            MFloat[4](1, -2.5, 1, 0),
+            MFloat[4](-1, -2.5, -1, 0),
+            MFloat[4](1, -2.5, -1, 0),
+            MFloat[4](-1, 2.5, 1, 0),
+            MFloat[4](1, 2.5, 1, 0),
+            MFloat[4](-1, 2.5, -1, 0),
+            MFloat[4](1, 2.5, -1, 0)
         ]
         comptime weights : InlineArray[Float64, 8] = [
             1,1,1,1,1,1,1,1
         ]
-
+        
         sig = self.dust.next(10, 40) * 0.5
         sig = self.filt.bpf(sig, 1200, 10.0, 1.0)
 
-        out = dbap3D[8, max_simd, speakers, weights](sig, MFloat[4](self.pos[0], self.height, self.pos[1]), 0.1)
-
+        out = dbap3D[8, max_simd, speakers, weights](sig, MFloat[4](self.pos[0], self.height, self.pos[1], 0), 0.1)
+        print(out)
         #7 speaker setup
 
         # comptime speakers : InlineArray[MFloat[2], 7] = [
