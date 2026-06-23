@@ -1,6 +1,7 @@
 from std.math import sqrt, floor, cos, pi, sin
 from std.sys import simd_width_of
 from std.algorithm import vectorize
+from std.python import Python
 from mmm_audio import *
 
 
@@ -579,6 +580,7 @@ def vbap2D[num_speakers: Int, simd_out_size: Int, speaker_positions: InlineArray
 
     #Find the pairs of speakers as indices, allows for arbitrary assignment of output channels. Meaning speaker positions are given as their channel out
     def calc_speaker_pairs[speaker_az: InlineArray[Float64, num_speakers]]() -> InlineArray[InlineArray[Int, 2], num_speakers]:
+        
         var speaker_pairs = InlineArray[InlineArray[Int, 2], num_speakers](fill=[0, 0])
         var sorted_array = speaker_az.copy()
         sort(sorted_array)
@@ -763,7 +765,8 @@ def vbap3D[num_speakers: Int, simd_out_size: Int, speaker_positions: InlineArray
 
         return inverse_bases
 
-    def index_of[](array: InlineArray[Float64, _], element: Float64) -> Int:
+    # Finds the index of a vector in an array
+    def index_of[](array: InlineArray[MFloat[4], _], element: MFloat[4]) -> Int:
         var index : Int = 0
         for i in range(len(array)):
                 if array[i] == element:
@@ -772,21 +775,65 @@ def vbap3D[num_speakers: Int, simd_out_size: Int, speaker_positions: InlineArray
         
         return index
 
-    #Find the pairs of speakers as indices, allows for arbitrary assignment of output channels. Meaning speaker positions are given as their channel out
-    def calc_speaker_pairs[speaker_az: InlineArray[Float64, num_speakers]]() -> InlineArray[InlineArray[Int, 2], num_speakers]:
-        var speaker_pairs = InlineArray[InlineArray[Int, 2], num_speakers](fill=[0, 0])
-        var sorted_array = speaker_az.copy()
-        sort(sorted_array)
+    #finds the triangle with the smallest area
+    def find_smallest[coordinates: InlineArray[MFloat[2], _], num_speakers: Int]() -> InlineArray[InlineArray[Int, 3], num_speakers]:
+        var smallest_area = 10000.0
+        var temp_indices: InlineArray[Int, 3] = [0, 0, 0]
+        var indices = InlineArray[InlineArray[Int, 3], num_speakers](fill=[0,0,0])
+
+        for i in range(len(coordinates) - 2):
+
+            for j in range(len(coordinates) - 1 - i):
+            
+                for k in range(len(coordinates) - 1 - i - j):
+
+                    var new_area =  0.5 * abs((coordinates[i][0] * coordinates[j][1]) - (coordinates[i][0] * coordinates[k][1]) + (coordinates[j][0] * coordinates[k][1]) - (coordinates[j][0] * coordinates[i][1]) + (coordinates[k][0] * coordinates[i][1]) - (coordinates[k][0] * coordinates[j][1]))
+
+                    if new_area < smallest_area:
+                        smallest_area = new_area
+                        temp_indices = [i, j, k]
+
+            indices[i] = temp_indices
+
+
+        return indices
+
+    def calc_uv(vector: MFloat[4]) -> MFloat[2]:
+        u = 0.5 + (atan2(vector[2], vector[0])/(2 * pi))
+        v = asin(vector[1])/pi + 0.5
+        return MFloat[2](u, v)
+
+    
+    #Find the triplets of speakers as indices, allows for arbitrary assignment of output channels. Meaning speaker positions are given as their channel out
+    def calc_speaker_triplets[speakers: InlineArray[MFloat[4], num_speakers]]()-> InlineArray[InlineArray[Int, 3], num_speakers]:
+        
+        var speaker_triplets = InlineArray[InlineArray[Int, 3], num_speakers](fill=[0, 0, 0])
+        var speaker_uvs = InlineArray[MFloat[2], num_speakers](fill=MFloat[2](0.0))
+        
+        # find the closest two speakers, make a triplet
+        for i, speaker in enumerate(speakers):
+            speaker_uvs[i] = calc_uv(speaker)
+            pass
+        
+        for i, uv in enumerate(speaker_uvs):
+            
+            for j in range(num_speakers - i - 2):
+
+                
+
+                pass
+
+            pass
         
         for i in range(num_speakers):
-            speaker_pairs[i] = [index_of(speaker_az, sorted_array[i]), index_of(speaker_az, sorted_array[(i + 1) % num_speakers])] #MInt[2](i, i + 1)
+            speaker_triplets[i] = [index_of(speaker_az, sorted_array[i]), index_of(speaker_az, sorted_array[(i + 1) % num_speakers])] #MInt[2](i, i + 1)
         
         
-        return speaker_pairs
+        return speaker_triplets
     
     comptime speaker_unit_vectors = calc_speaker_unit_vectors()
-    comptime speaker_pairs = calc_speaker_pairs[speaker_positions]()
-    comptime speaker_inverse_bases = calc_inverse_base[speaker_pairs, speaker_unit_vectors]()
+    comptime speaker_triplets = calc_speaker_triplets[speaker_unit_vectors]()
+    comptime speaker_inverse_bases = calc_inverse_base[speaker_triplets, speaker_unit_vectors]()
     
     var active_speaker_pair : InlineArray[Int, 2] = [0, 0]
     var active_gain_factors = MFloat[2](0.5)
