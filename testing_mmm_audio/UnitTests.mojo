@@ -475,11 +475,11 @@ def test_env() raises:
     osc_buffers.init_pointee_move(OscBuffers())
     windows: UnsafePointer[mut=True, Windows, MutUntrackedOrigin] = alloc[Windows](1)
     windows.init_pointee_move(Windows())
-    world_info: UnsafePointer[mut=True, WorldInfo, MutUntrackedOrigin] = alloc[WorldInfo](1)
-    world_info.init_pointee_move(WorldInfo())
+    environment: UnsafePointer[mut=True, Environment, MutUntrackedOrigin] = alloc[Environment](1)
+    environment.init_pointee_move(Environment())
 
     world = alloc[MMMWorld](1) 
-    world.init_pointee_move(MMMWorld(48000., world_info, osc_buffers, windows))
+    world.init_pointee_move(MMMWorld(48000., environment, osc_buffers, windows))
 
     x = MFloat[4](0.1, 0.25, 0.45, 1.5)
     result = MFloat[4](0.0, 0.0, 0.0, 0.0)

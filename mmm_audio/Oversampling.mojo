@@ -246,7 +246,7 @@ def create_subworld(world: World, times_ov_samp: TimesOversampling = TimesOversa
     sample_rate = world[].sample_rate * Float64(times_ov_samp.times)
     new_world.init_pointee_move(MMMWorld(
         sample_rate, 
-        world_info_ptr = world[].world_info, 
+        environment_ptr = world[].environment, 
         osc_buffers_ptr = world[].osc_buffers, 
         windows_ptr = world[].windows, 
         messenger_manager_ptr = world[].messenger_manager, 
