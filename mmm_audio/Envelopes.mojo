@@ -279,8 +279,7 @@ def win_read[window_type: WindowType = WindowType.sine, interp: Interp = Interp.
     Returns:
         The window value at the specified phase.
     """
-    temp = world[].windows.value()
-    val = temp[].at_phase[window_type=window_type, interp=interp](world, phase)
+    val = world[].windows().at_phase[window_type=window_type, interp=interp](world, phase)
     return val
 
 def buf_read[num_chans: Int, interp: Interp = Interp.linear, bWrap: Bool = True](world: World, env_buffer: SIMDBuffer[num_chans], phase: MFloat[1], prev_phase: MFloat[1] = 0.0) -> MFloat[num_chans]:
@@ -407,7 +406,7 @@ struct Compressor[num_chans: Int, ov_samp: TimesOversampling = TimesOversampling
     
     Params:
         num_chans: Number of channels of input/output.
-        ov_samp: Downsampler factor for the compressor.
+        ov_samp: TimesOversampling factor for oversampling the input signal before compression.
     """
 
     var amp: Amplitude[Self.num_chans]

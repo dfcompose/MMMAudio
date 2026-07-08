@@ -28,9 +28,11 @@
 !README.md
 !requirements.txt
 !TODO.md
+!*.toml
 
 *.zip
 *.wav
+*.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
