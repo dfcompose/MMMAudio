@@ -66,7 +66,7 @@ struct DistanceBasedPanning(Movable, Copyable):
         sig = self.filt.bpf(sig, 1200, 10.0, 1.0)
 
         out = dbap3D[8, max_simd, speakers, weights](sig, MFloat[4](self.pos[0], self.height, self.pos[1], 0), 0.1)
-        print(out)
+        
         #7 speaker setup
 
         # comptime speakers : InlineArray[MFloat[2], 7] = [
