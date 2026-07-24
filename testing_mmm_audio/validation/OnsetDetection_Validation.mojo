@@ -1,0 +1,110 @@
+"""Generate MMMAudio onset detection-function and onset-slice validation data."""
+
+from std.sys import argv
+
+from mmm_audio import *
+
+def default_audio_path() -> String:
+    return "/Users/ted/dev/flucoma-core/Resources/AudioFiles/Nicol-LoopE-M.wav"
+
+def resolve_audio_path() raises -> String:
+    var args = argv()
+    var i = 0
+    while i < len(args):
+        if args[i] == "--audio-path":
+            if i + 1 >= len(args):
+                raise Error("--audio-path requires a value")
+            return args[i + 1]
+        i += 1
+
+    return default_audio_path()
+
+def main() raises:
+
+    window_size = 1024
+    hop_size = 512
+
+    thresholds = List[Float64](length=10,fill=0.0)
+
+    with open("testing_mmm_audio/validation/flucoma_sc_results/onset_detection_flucoma_thresholds.csv", "r") as f:
+        thresholds_str = f.read().split(",")
+        for i, ts in enumerate(thresholds_str):
+            thresholds[i] = Float64(ts)
+
+    var audio_path = resolve_audio_path()
+    buf = Buffer.load(audio_path)
+    sample_rate = buf.sample_rate
+
+    comptime filter_size: Int = 5
+    comptime frame_delta: Int = 0
+    onset_debounce: Float64 = (Float64(hop_size) / sample_rate) * 2.0
+
+    environment = alloc[Environment](1)
+    environment.init_pointee_move(Environment(64, 2, 2))
+    world = alloc[MMMWorld](1)
+    world.init_pointee_move(MMMWorld(sample_rate, environment))
+
+    buf_detection_points = List[List[Int]](length=10, fill=List[Int]())
+
+    for i in range(10):
+        onset_threshold = thresholds[i]
+        
+        onset_slice = OnsetDetection.buf_analysis(
+            world,
+            buf,
+            metric=OnsetMetric(i),
+            threshold=onset_threshold,
+            debounce=onset_debounce,
+            window_size=window_size,
+            hop_size=hop_size,
+            filter_size=filter_size,
+            frame_delta=frame_delta,
+        )
+
+        print("metric: ", i, ", threshold: ", onset_threshold, ", onsets: ", len(onset_slice))
+        buf_detection_points[i] = onset_slice^
+
+    with open("testing_mmm_audio/validation/mojo_results/mojo_buf_onset_detection_points.csv", "w") as f:
+        for i in range(10):
+            slice_str = ",".join([String(x) for x in buf_detection_points[i]])
+            if(i != 0):
+                f.write("\n")
+            f.write(slice_str)
+
+    rt_detection_points = List[List[Int]](length=10, fill=List[Int]())
+    for i in range(10):
+        rt_slicer = OnsetDetection(world, metric=OnsetMetric(i), threshold=thresholds[i], debounce=onset_debounce, window_size=window_size, hop_size=hop_size, filter_size=filter_size, frame_delta=frame_delta)
+        for sample_i in range(buf.num_frames):
+            if rt_slicer.next(buf.data[0][sample_i]):
+                rt_detection_points[i].append(sample_i)
+    
+    with open("testing_mmm_audio/validation/mojo_results/mojo_rt_onset_detection_points.csv", "w") as f:
+        for i in range(10):
+            slice_str = ",".join([String(x) for x in rt_detection_points[i]])
+            if(i != 0):
+                f.write("\n")
+            f.write(slice_str)
+
+    odf_buf_time_series = List[List[Float64]](length=10, fill=List[Float64]())
+
+    # test onset detection feature
+    for i in range(10):
+        time_series = OnsetDetectionFeature.buf_analysis(
+            buf=buf, 
+            chan=0, 
+            start_frame=0, 
+            num_frames=-1, 
+            metric=OnsetMetric(i), 
+            window_size=window_size, 
+            hop_size=hop_size)
+        
+        for sample in time_series:
+            odf_buf_time_series[i].append(sample[0])
+
+    with open("testing_mmm_audio/validation/mojo_results/mojo_buf_odf_time_series.csv", "w") as f:
+        for i in range(10):
+            time_series_str = ",".join([String(x) for x in odf_buf_time_series[i]])
+            if(i != 0):
+                f.write("\n")
+            f.write(time_series_str)
+
