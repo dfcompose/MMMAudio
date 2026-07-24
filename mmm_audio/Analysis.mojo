@@ -1,5 +1,5 @@
 from mmm_audio import *
-from std.math import ceil, floor, log2, log, exp, sqrt, cos, pi, inf
+from std.math import atan2, ceil, floor, log2, log, exp, sin, sqrt, cos, pi, inf
 
 @always_inline
 @doc_hidden
@@ -1315,11 +1315,6 @@ struct SpectralFlux(FFTProcessable, GetFloat64Featurable):
     """Spectral Flux analysis.
 
     This implementation computes the squared difference between the magnitudes of the current frame and the previous frame, summed across all frequency bins.
-
-    Args:
-    
-            num_mags: The number of magnitude bins in the input to expect. This is typically the FFT size divided by 2, but could also be the number of mel bands or another spectral summary that produces a list of values.
-            positive_only: Whether to only consider positive differences (increases in energy) when computing the spectral flux. If `False`, spectral flux is the average of squared differences between the magnitudes. If `True`, spectral flux is the average of (non-squared to match FluCoMa) differences between the magnitudes, but negative differences are set to 0. Using `positive_only=True` is a common approach when using spectral flux for onset detection, as onsets are typically characterized by increases in energy.
     """
     var num_mags: Int
     var num_mags_f64: Float64
@@ -1333,7 +1328,7 @@ struct SpectralFlux(FFTProcessable, GetFloat64Featurable):
 
         Args:
             num_mags: The number of magnitude bins in the input to expect. This is typically the FFT size divided by 2, but could also be the number of mel bands or another spectral summary that produces a list of values.
-            positive_only: Whether to only consider positive differences (increases in energy) when computing the spectral flux. If `False`, spectral flux is the average of squared differences between the magnitudes. If `True`, spectral flux is the average of (non-squared to match FluCoMa) differences between the magnitudes, but negative differences are set to 0. Using `positive_only=True` is a common approach when using spectral flux for onset detection, as onsets are typically characterized by increases in energy.
+            positive_only: Whether to only consider positive differences (increases in energy) when computing the spectral flux. If `False`, spectral flux is the average of squared differences between the magnitudes. If `True`, spectral flux is the average of (non-squared) differences between the magnitudes, but negative differences are set to 0. Using `positive_only=True` is a common approach when using spectral flux for onset detection, as onsets are typically characterized by increases in energy.
         """
         self.num_mags = num_mags
         self.num_mags_f64 = Float64(self.num_mags)
@@ -1345,7 +1340,7 @@ struct SpectralFlux(FFTProcessable, GetFloat64Featurable):
     def next_frame(mut self, mut mags: List[Float64], mut phases: List[Float64]):
         """Compute the spectral flux onset value for a given FFT analysis.
 
-        This function is to be used by [FFTProcess](FFTProcess.md/#struct-fftprocess) if SpectralFluxOnsets is passed as the "process".
+        This function is to be used by [FFTProcess](FFTProcess.md/#struct-fftprocess) if SpectralFlux is passed as the "process".
 
         Nothing is returned from this function, but the computed spectral flux value is stored in self.flux.
 
@@ -1394,78 +1389,6 @@ struct SpectralFlux(FFTProcessable, GetFloat64Featurable):
 
 trait GetBoolFeaturable:
     def get_features(self) -> List[Bool]:...
-
-struct SpectralFluxOnsets(Movable,Copyable,GetBoolFeaturable):
-    """Spectral Flux Onset analysis.
-    """
-    var world: World
-    var thresh: Float64
-    var state: Bool
-    var current_slice_length_samps: Float64
-    var min_slice_len: Float64
-    var filter_size: Int
-    var filter: MedianFilter
-    var prev_flux: Float64
-    var fftp: FFTProcess[SpectralFlux,ifft=False,input_window_shape=WindowType.hann,output_window_shape=WindowType.hann]
-
-    def get_features(self) -> List[Bool]:
-        return [self.state]
-
-    def __init__(out self, world: World, window_size: Int = 1024, hop_size: Int = 512, filter_size: Int = 5):
-        self.world = world
-        self.thresh = 0.5
-        self.state = False
-        self.current_slice_length_samps = 0
-        self.min_slice_len = 1
-        self.filter_size = filter_size
-        self.filter = MedianFilter(filter_size)
-        self.prev_flux = 0.0
-        sfp = SpectralFlux(num_mags=(window_size // 2) + 1, positive_only=True)
-        self.fftp = FFTProcess[SpectralFlux,ifft=False,input_window_shape=WindowType.hann,output_window_shape=WindowType.hann](self.world,process=sfp^, window_size=window_size, hop_size=hop_size)
-
-    def next(mut self, input: SIMD[DType.float64,1]) -> Bool:
-
-        _ = self.fftp.next(input)
-        
-        self.current_slice_length_samps += 1
-
-        if self.state: # state is high
-            # set low
-            self.state = False
-        else: # state *will* be low if we're in here:
-            flux = self.fftp.buffered_process.process.process.flux
-            var filtered_flux: Float64
-            if self.filter_size >= 3:
-                filtered_flux = flux - self.filter.process_sample(flux)
-            else:
-                filtered_flux = flux - self.prev_flux
-            self.prev_flux = flux
-            curr_slice_len_sec = self.current_slice_length_samps / self.world[].sample_rate
-            if filtered_flux > self.thresh and curr_slice_len_sec > self.min_slice_len:
-                self.state = True
-
-                # should this actually be 1?
-                self.current_slice_length_samps = 0
-
-        return self.state
-    
-    @staticmethod
-    def buf_analysis(world: World, buf: Buffer, chan: Int = 0, start_frame: Int = 0, var num_frames: Int = -1, thresh: Float64 = 0.5, min_slice_len: Float64 = 1.0, window_size: Int = 1024, hop_size: Int = 512, filter_size: Int = 5) raises -> List[Int]:
-        if num_frames < 0:
-            num_frames = buf.num_frames - start_frame
-
-        # run the analysis
-        sf_onsets = SpectralFluxOnsets(world,window_size,hop_size,filter_size)
-        sf_onsets.thresh = thresh
-        sf_onsets.min_slice_len = min_slice_len
-
-        onsets = List[Int]()
-
-        for i in range(num_frames):
-            if sf_onsets.next(buf.data[chan][start_frame + i]):
-                onsets.append(start_frame + i)
-        
-        return onsets^
 
 struct TopNFreqs(FFTProcessable, GetFloat64Featurable):
     """An FFTProcessable that identifies the top N frequency peaks in each FFT frame and provides their frequencies and amplitudes as output.
