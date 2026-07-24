@@ -33,7 +33,7 @@ VS Code has issues with lots of text sometimes. If your code gets garbled as it 
 
 Go to the [Examples](../examples/index.md) page to run an example!
 
-## 4. Making Your Own Programs
+## 3. Making Your Own Programs
 
 ### 1 Make a directory in the MMMAudio folder
 This is to house your own projects. Any directory that is not part of the MMMAudio repo can be used to store user files. (and will be ignored by git if you update the repo, so no worries about it being overwritten or you uploading your files to the repo)
