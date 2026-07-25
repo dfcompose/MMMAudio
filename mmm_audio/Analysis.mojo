@@ -1465,12 +1465,14 @@ struct TopNFreqs(FFTProcessable, GetFloat64Featurable):
             self.sort_pairs_by_freq()
 
     def sort_pairs_by_freq(mut self):
+        # def cmp_fn(a: Tuple[Float64, Float64], b: Tuple[Float64, Float64]) capturing -> Bool:
+        #     if a[1] <= 0.0:
+        #         return False
+        #     if b[1] <= 0.0:
+        #         return True
+        #     return a[1] > b[1]
         def cmp_fn(a: Tuple[Float64, Float64], b: Tuple[Float64, Float64]) capturing -> Bool:
-            if a[0] <= 0.0:
-                return False
-            if b[0] <= 0.0:
-                return True
-            return a[0] < b[0]
+            return a[1] > b[1]
 
         sort[cmp_fn](self.freq_amp_pairs)
 
