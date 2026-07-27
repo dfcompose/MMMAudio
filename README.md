@@ -8,9 +8,9 @@ Writing dsp code in Mojo is straight-forward and the feedback loop of being able
 
 ## Getting Started
 
-[See the Getting Started guide](https://spluta.github.io/MMMAudio/getting_started/).
+[See the Getting Started guide](https://mmmaudio.github.io/mmmaudio/getting_started/).
 
-A link to the online documentation is found here: [https://spluta.github.io/MMMAudio/](https://spluta.github.io/MMMAudio/)
+A link to the online documentation is found here: [https://mmmaudio.github.io/mmmaudio/](https://mmmaudio.github.io/mmmaudio/)
 
 See "Documentation Generation" on how to build this locally.
 
