@@ -55,7 +55,7 @@ See `User Directories` below on how to make your own mojo package.
 
 ## Running Examples
 
-For more information on running examples see [Examples Index](https://spluta.github.io/MMMAudio/examples/).
+For more information on running examples see [Examples Index](https://mmmaudio.github.io/mmmaudio/examples/).
 ``.
 
 ## VS Code + pixi: run Python line-by-line with Shift+Enter
@@ -90,7 +90,7 @@ When you pull a new version, it will not overwrite the files in your user-create
 
 ## Roadmap
 
-See the [Roadmap](https://spluta.github.io/MMMAudio/contributing/Roadmap) to see where MMMAudio is headed next.
+See the [Roadmap](https://mmmaudio.github.io/mmmaudio/contributing/Roadmap/#8-simdbuffer) to see where MMMAudio is headed next.
 
 ## ICMC Paper
 
@@ -98,7 +98,7 @@ Check out our ICMC Paper on MMMAudio [here](https://github.com/spluta/MMMAudio/b
 
 ## Documentation Generation
 
-For information on the documentation generation see [Documentation Generation](https://spluta.github.io/MMMAudio/contributing/documentation/).
+For information on the documentation generation see [Documentation Generation](https://mmmaudio.github.io/mmmaudio/contributing/documentation/).
 
 ## Credits
 
