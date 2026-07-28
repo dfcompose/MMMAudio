@@ -62,7 +62,7 @@ The folder that has your code in it needs to be considered a "module" by the Moj
     2) The `package_name` corresponds to the folder containing your files:  
        - Files in directory `mmmaudio/pretty_sounds` use `package_name="pretty_sounds"`  
        - Files in directory `mmmaudio/ugly_sounds` use `package_name="ugly_sounds"`  
-       - Your folder must be inside the MMMAudio directory and must contain the `__init__.mojo` file as explained above  
+       - Your folder must be inside the mmmaudio directory and must contain the `__init__.mojo` file as explained above  
 
 
 ```python
