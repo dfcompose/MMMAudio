@@ -1,5 +1,10 @@
-<p>
-<img src="resources/Logo.jpg" alt="Project Logo" width="300" align="left">
+
+<p align="left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="resources/Logo.jpg">
+    <source media="(prefers-color-scheme: light)" srcset="resources/LogoWhite.jpg">
+    <img alt="Project Logo" src="resources/Logo.jpg" width="300">
+  </picture>
 </p>
 
 MMMAudio is a Mojo/Python environment for sound synthesis which uses Mojo for real-time audio processing and Python as a scripting control language. It runs on Mac and Linux, including Raspberry Pi (on Ubuntu). It kind of works on Windows through wsl.
