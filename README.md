@@ -1,9 +1,9 @@
 
 <p align="left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="resources/Logo.jpg">
+    <source media="(prefers-color-scheme: dark)" srcset="resources/LogoDark.jpg">
     <source media="(prefers-color-scheme: light)" srcset="resources/LogoWhite.jpg">
-    <img alt="Project Logo" src="resources/Logo.jpg" width="300">
+    <img alt="Project Logo" src="resources/LogoDark.jpg" width="300">
   </picture>
 </p>
 
