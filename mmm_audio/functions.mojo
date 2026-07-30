@@ -1089,3 +1089,16 @@ def array_to_mfloat[simd_out_size: Int, array: InlineArray[Float64, _], fill_wit
     for i in range(len(array)):
         new_vec[i] = array[i]
     return new_vec
+
+def truncate(x: Float64, decimal_places: Int) -> Float64:
+    """Truncates a float to a specified number of decimal places.
+
+    Args:
+        x: The float value to truncate.
+        decimal_places: The number of decimal places to keep.
+
+    Returns:
+        The truncated float value.
+    """
+    factor = 10.0 ** decimal_places
+    return floor(x * factor) / factor
