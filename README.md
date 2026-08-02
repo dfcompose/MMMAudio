@@ -13,7 +13,7 @@ MMMAudio is a highly efficient synthesis system that uses parallelized SIMD oper
 
 Writing dsp code in Mojo is straight-forward and the feedback loop of being able to quickly compile the entire project in a few seconds to test is faster than making externals in SC/max/pd. 
 
-Its design foregrounds three strengths that we feel set it apart from existing Computer Music Environments: 
+Its design foregrounds four strengths that we feel set it apart from existing Computer Music Environments: 
 1) It unifies instrument building and DSP authoring under the same workflow and language (Modular's Mojo), letting creators prototype innovative DSP directly within the same environment where they are building instruments.
 2) It allows (and encourages) single sample feedback and oversampling anywhere in the DSP graph.
 3) It leverages the existing, well supported programming languages, Mojo and Python, as well as their infrastructure, taking advantage of the many packages in the Python ecosystem. 
