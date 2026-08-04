@@ -12,6 +12,10 @@ def mprint(
     print(*values, sep=sep, end=end)
     return values[0] if len(values) == 1 else values
 
+def choose(a: list) -> object:
+    """Return a random element from the list a."""
+    return random.choice(a)
+
 def swap(a: object, b: object) -> tuple:
     """Swap the values of a and b, returning them in a tuple."""
     return b, a
