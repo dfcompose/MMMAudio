@@ -1,5 +1,20 @@
 from mmm_audio import *
 
+def mprint[*Ts: Writable](world: World, *values: *Ts, n_blocks: UInt16 = 10, sep: StringSlice[StaticConstantOrigin] = " ", end: StringSlice[StaticConstantOrigin] = "\n") -> None:
+    """Prints the provided arguments to the console.
+
+    Parameters:
+        Ts: All printable values must implement the Writable trait. This parameter is inferred by the values passed to the function.
+
+    Args:
+        world: The World instance used for printing.
+        values: A variable number of arguments to print.
+        n_blocks: The number of blocks to print. Default is 10.
+        sep: The separator between printed values. Default is a space.
+        end: The string to print at the end. Default is a newline.
+    """
+    world[].print(*values, n_blocks=n_blocks, sep=sep, end=end)
+
 @always_inline
 def dbamp[width: Int, //](db: MFloat[width]) -> MFloat[width]:
     """Converts decibel values to amplitude.
@@ -279,83 +294,26 @@ def lincurve[num_chans: Int, //
         in_max: Maximum of input range (linear).
         out_min: Minimum of output range (curved).
         out_max: Maximum of output range (curved).
-        curve: Curve parameter (-10 to 10 typical range)
-               curve = 0: linear
-               curve > 0: exponential curve
-               curve < 0: logarithmic curve.
+        curve: Curve parameter (pow(normalized, curve))
+               curve = 1: linear
+               curve > 1: exponential (slow start, steep end)
+               curve > 0 and < 1: logarithmic (steep start, slow end).
     
     Returns:
         Curved output value.
     """
 
-    
-    # Handle near-zero curve (linear case)
-    curve_near_zero: MBool[num_chans] = abs(curve).lt(0.001)
-    
-    in_min2, in_max2, _ = check_reversed(in_min, in_max)
-    input2 = clip(input, in_min2, in_max2)
-    normalized = (input2 - in_min2) / (in_max2 - in_min2)
-    
-    out_min2, out_max2, outs_reversed = check_reversed(out_min, out_max)
-    normalized = outs_reversed.select(1.0 - normalized, normalized)
+    normalized = clip((input - in_min) / (in_max - in_min), 0.0, 1.0)
 
-    curve2 = outs_reversed.select(-curve, curve)
-
-    denom = 1.0 - exp(curve2)
-    numer = 1.0 - exp(normalized * curve2)
+    _, _, ins_reversed = check_reversed(in_min, in_max)
+    normalized = ins_reversed.select(1-normalized, normalized)
     
-    curved = numer / denom
-    
-    linear_result = normalized
-    curved_result = curved
-    
-    final_normalized = curve_near_zero.select(linear_result, curved_result)
-    
-    return clip(out_min2 + final_normalized * (out_max2 - out_min2), out_min2, out_max2)
-
-def curvelin[num_chans: Int, //](
-    input: MFloat[num_chans],
-    in_min: MFloat[num_chans],
-    in_max: MFloat[num_chans],
-    out_min: MFloat[num_chans],
-    out_max: MFloat[num_chans],
-    curve: MFloat[num_chans] = 0
-) -> MFloat[num_chans]:
-    """
-    Curve-to-linear transform (inverse of lincurve).
-    
-    Args:
-        input: Input value to transform (from curved space).
-        in_min: Minimum of input range (curved).
-        in_max: Maximum of input range (curved).
-        out_min: Minimum of output range (linear).
-        out_max: Maximum of output range (linear).
-        curve: Curve parameter (-10 to 10 typical range)
-               curve = 0: linear
-               curve > 0: undoes exponential curve
-               curve < 0: undoes logarithmic curve.
-    
-    Returns:
-        Linearized output value.
-    
-    """
-    
-    curve_zero: MBool[num_chans] = curve.eq(0.0)
-    temp_curve: MFloat[num_chans] = curve_zero.select(0.0001, curve)
-
-    in_min2, in_max2, _ = check_reversed(in_min, in_max)
-    input2 = clip(input, in_min2, in_max2)
-
-    normalized = (input2 - in_min2) / (in_max2 - in_min2)
+    curve2 = clip(curve, 1e-5, 8192.0)
 
     out_min2, out_max2, outs_reversed = check_reversed(out_min, out_max)
 
-    grow = pow(MFloat[num_chans](2.71828182845904523536), temp_curve)
-    linearized = log(normalized * (grow - 1) + 1) / temp_curve
-    linearized = outs_reversed.select(1 - linearized, linearized) 
-
-    answer = out_min2 + linearized * (out_max2 - out_min2)
-    return clip(answer, out_min2, out_max2)
+    curved = outs_reversed.select(1.0-pow(normalized, 1.0/curve2), pow(normalized, curve2))
+    return clip(out_min2 + curved * (out_max2 - out_min2), out_min2, out_max2)
 
 def linmap[num_chans: Int](x: MFloat[num_chans], *points: Tuple[MFloat[num_chans], MFloat[num_chans]]) -> MFloat[num_chans]:
     """Linearly maps an input value `x` based on a series of input-output points.
@@ -840,6 +798,33 @@ def coin[num_chans:Int](p: MFloat[num_chans]) -> MBool[num_chans]:
     coins = rands.lt(q)
     return coins
 
+def choose[num_chans:Int](*vals: MFloat[num_chans]) -> MFloat[num_chans]:
+    """Choose a random index.
+
+    Parameters:
+        num_chans: Number of channels in the SIMD vector.
+    
+    Args:
+        vals: A variable number of items to choose from.
+    
+    Returns:
+        An item chosen randomly from the provided values.
+    """
+    num_vals = len(vals)
+    if num_vals == 0:
+        return MFloat[num_chans](0.0)
+    idx = rrand(0, num_vals - 1)
+    return vals[idx]
+
+@doc_hidden
+def _reverse_range[T: Movable & Copyable & ImplicitlyCopyable & ImplicitlyDeletable](mut data: List[T], start: Int, end: Int):
+    s = start
+    e = end
+    while s < e:
+        data[s], data[e] = data[e], data[s]
+        s += 1
+        e -= 1
+
 def rotate_left_inplace[T: Movable & Copyable & ImplicitlyCopyable & ImplicitlyDeletable](mut data: List[T], N: Int):
     """Rotates a list to the left by N positions in-place.
 
@@ -852,17 +837,28 @@ def rotate_left_inplace[T: Movable & Copyable & ImplicitlyCopyable & ImplicitlyD
     """
     n = N % len(data)
     
-    def reverse(mut arr: List[T], start: Int, end: Int):
-        s = start
-        e = end
-        while s < e:
-            arr[s], arr[e] = arr[e], arr[s]
-            s += 1
-            e -= 1
+    _reverse_range(data, 0, n - 1)      # Reverse first part
+    _reverse_range(data, n, len(data) - 1)  # Reverse second part
+    _reverse_range(data, 0, len(data) - 1)  # Reverse entire array
+
+def rotate_right_inplace[T: Movable & Copyable & ImplicitlyCopyable & ImplicitlyDeletable](mut data: List[T], N: Int):
+    """Rotates a list to the right by N positions in-place.
+
+    Parameters:
+        T: Element type stored in the list.
+
+    Args:
+        data: The list to rotate.
+        N: The number of positions to rotate the list by.
+    """
+    if len(data) == 0:
+        return
+
+    n = len(data) - (N % len(data))
     
-    reverse(data, 0, n - 1)      # Reverse first part
-    reverse(data, n, len(data) - 1)  # Reverse second part
-    reverse(data, 0, len(data) - 1)  # Reverse entire array
+    _reverse_range(data, 0, n - 1)      # Reverse first part
+    _reverse_range(data, n, len(data) - 1)  # Reverse second part
+    _reverse_range(data, 0, len(data) - 1)  # Reverse entire array
 
 struct TopNPeaks(Movable,Copyable):
     var ordinal: List[Int]
@@ -940,6 +936,9 @@ def find_quadratic_peak(p1: Float64, p2: Float64, p3: Float64) -> Tuple[Float64,
     vertex_y = a * vertex_x * vertex_x + b * vertex_x + c
     
     return (vertex_x, vertex_y)
+
+def all_lanes_equal[dtype: DType, width: Int](v: SIMD[dtype, width]) -> Bool:
+    return (v.eq(v[0])).reduce_and()
 
 @doc_hidden
 def horner[num_chans: Int, coeffs: Span[Float64, ...]](z: MFloat[num_chans]) -> MFloat[num_chans]:
@@ -1090,3 +1089,16 @@ def array_to_mfloat[simd_out_size: Int, array: InlineArray[Float64, _], fill_wit
     for i in range(len(array)):
         new_vec[i] = array[i]
     return new_vec
+
+def truncate(x: Float64, decimal_places: Int) -> Float64:
+    """Truncates a float to a specified number of decimal places.
+
+    Args:
+        x: The float value to truncate.
+        decimal_places: The number of decimal places to keep.
+
+    Returns:
+        The truncated float value.
+    """
+    factor = 10.0 ** decimal_places
+    return floor(x * factor) / factor

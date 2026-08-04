@@ -7,23 +7,22 @@ from mmm_audio import *
 
 
 @always_inline
-def pan2(samples: Float64, pan: Float64) -> MFloat[2]:
+def pan2(sample: Float64, pan: Float64) -> MFloat[2]:
     """
     Simple constant power panning function.
 
     Args:
-        samples: Float64 - Mono input sample.
+        sample: Float64 - Mono input sample.
         pan: Float64 - Pan value from -1.0 (left) to 1.0 (right).
 
     Returns:
         Stereo output as MFloat[2].
     """
 
-    var pan2 = clip(pan, -1.0, 1.0)  # Ensure pan is set and clipped before processing
-    var gains = MFloat[2](-pan2, pan2)
+    var pos = clip(pan, -1.0, 1.0)
+    var angle = (pos + 1.0) * 0.25 * pi
 
-    samples_out = samples * sqrt((1 + gains) * 0.5)
-    return samples_out  # Return stereo output as List
+    return sample * cos(MFloat[2](angle, pi_over_2 - angle))  
 
 @always_inline
 def pan_stereo(samples: MFloat[2], pan: Float64) -> MFloat[2]:
@@ -181,8 +180,6 @@ def splay_n[simd_in_width: Int, num_speakers: Int, simd_out_size: Int, pan_point
     var mul_list_materialized: InlineArray[MFloat[simd_out_size], pan_points] = materialize[mul_list]()
     num_input_channels = len(input) * simd_in_width
     out = MFloat[simd_out_size](0.0)
-
-    # world[].print(mul_list_materialized)
 
     for i in range(num_input_channels):
         if num_input_channels == 1:

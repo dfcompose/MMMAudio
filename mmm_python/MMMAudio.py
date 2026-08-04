@@ -428,14 +428,16 @@ class MMMAudio:
         if num_channels == 1:
             axes = [axes]
         
+        
         for ch in range(num_channels):
             ax = axes[ch]
             if num_channels > 1:
                 ax.plot(returned_samples[:, ch])
             else:
                 ax.plot(returned_samples)
-            
-            ax.set_ylim(-1, 1)
+            min_val = np.min(returned_samples[:, ch])
+            max_val = np.max(returned_samples[:, ch])
+            ax.set_ylim(min_val, max_val)
             ax.set_title(f'Channel {ch}')
             ax.set_xlabel("Samples")
             ax.set_ylabel("Amplitude")
@@ -477,7 +479,7 @@ class MMMAudio:
             for instance in cls.instances:
                 instance.update_mouse_pos(x, y)
 
-        slider2d.value_changed.connect(on_slider_change)
+        slider2d.valueChanged.connect(on_slider_change)
         layout.addWidget(slider2d)
         window.setLayout(layout)
         window.show()
@@ -602,6 +604,8 @@ class MMMAudio:
             else:
                 actual_output_channels = 0
             
+            print(f"[PID {pid}] Using input device: {in_device_info['name'] if in_device_exists else 'None'}")
+            print(f"[PID {pid}] Using output device: {out_device_info['name'] if out_device_exists else 'None'}")
             print(f"[PID {pid}] Sample rate: {sample_rate}, Block size: {blocksize}")
             print(f"[PID {pid}] Input channels: {actual_input_channels}, Output channels: {actual_output_channels}")
             sys.stdout.flush()
