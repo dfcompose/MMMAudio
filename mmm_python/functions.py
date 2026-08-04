@@ -255,6 +255,52 @@ def clip(val: float, min_val: float, max_val: float) -> float | int:
     """
     return max(min_val, min(max_val, val))
 
+def fold(value: float, min_val: float, max_val: float) -> float:
+    """Fold a value into a specified range.
+    
+    Args:
+        value: The value to fold.
+        min_val: The minimum of the range.
+        max_val: The maximum of the range.
+    
+    Returns:
+        The folded value within the range [min_val, max_val].
+    """
+    if min_val > max_val:
+        min_val, max_val = max_val, min_val
+    range_size = max_val - min_val
+    if range_size == 0:
+        return min_val
+    while value < min_val or value > max_val:
+        if value < min_val:
+            value = min_val + (min_val - value)
+        elif value > max_val:
+            value = max_val - (value - max_val)
+    return value
+
+def wrap(value: float, min_val: float, max_val: float) -> float:
+    """Wrap a value into a specified range.
+    
+    Args:
+        value: The value to wrap.
+        min_val: The minimum of the range.
+        max_val: The maximum of the range.
+    
+    Returns:
+        The wrapped value within the range [min_val, max_val].
+    """
+    if min_val > max_val:
+        min_val, max_val = max_val, min_val
+    range_size = max_val - min_val
+    if range_size == 0:
+        return min_val
+    while value < min_val or value > max_val:
+        if value < min_val:
+            value += range_size
+        elif value > max_val:
+            value -= range_size
+    return value
+
 def ampdb(amp: float) -> float:
     """Convert amplitude to decibels.
     
