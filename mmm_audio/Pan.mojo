@@ -545,7 +545,6 @@ def vbap2D[num_speakers: Int, simd_out_size: Int, speaker_positions: Array[Float
             
             if gain_factors[i][0] >= 0.0 and gain_factors[i][1] >= 0.0:
                 active_index = i 
-                var active_pair = speaker_pairs_materialized()[active_index].copy()
                 var scaled_gains = gain_factors[active_index] / (sqrt((gain_factors[active_index] * gain_factors[active_index]).reduce_add()))
                 active_gains = scaled_gains
                 break

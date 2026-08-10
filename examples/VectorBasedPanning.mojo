@@ -59,10 +59,10 @@ struct VectorBasedPanning(Movable, Copyable):
         
         
 
-        sig = self.dust.next(10, 40) * 0.5
+        var sig = self.dust.next(10, 40) * 0.5
         sig = self.filt.bpf(sig, 1200, 10.0, 1.0)
 
-        out = vbap2D[4, max_simd, speakers](sig, self.az)
+        var out = vbap2D[4, max_simd, speakers](sig, self.az)
         
 
         #7 speaker setup
