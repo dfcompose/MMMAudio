@@ -1,4 +1,5 @@
 from mmm_audio import *
+from .functions import *
 from std.math import sin, log2, ceil, floor
 from std.sys import simd_width_of
 from std.pathlib import Path
@@ -98,12 +99,12 @@ struct SIMDBuffer[num_chans: Int = 2](Movable, Copyable):
         """
         if file_name != "":
             try:
-                header = read_wav_header(file_name)
+                var header = read_wav_header(file_name)
                 if verbose:
                     print("Loading file into SIMDBuffer: ", file_name)
                     print_wav_info(header)
 
-                data = read_wav_SIMDs[Self.num_chans](file_name, header, num_wavetables)
+                var data = read_wav_SIMDs[Self.num_chans](file_name, header, num_wavetables)
                 
                 return SIMDBuffer(data^, MFloat[](header.sample_rate))
                 
@@ -219,6 +220,7 @@ struct Buffer(Movable, Copyable):
             The interpolated sample value at the given phase.
         """
         return SpanInterpolator.read[
+            num_chans=1,
             interp=interp,
             bWrap=bWrap,
             mask=mask
@@ -244,7 +246,7 @@ struct Buffer(Movable, Copyable):
 
         var data = List[List[Float64]]()
         for _ in range(num_chans):
-            channel_data = List[Float64]()
+            var channel_data = List[Float64]()
             for _ in range(num_frames):
                 channel_data.append(0.0)
             data.append(channel_data^)
@@ -274,12 +276,12 @@ struct Buffer(Movable, Copyable):
         if file_name != "":
             # Load the file if a file_name is provided
             try:
-                header = read_wav_header(file_name)
+                var header = read_wav_header(file_name)
                 if verbose:
                     print("Loading file into Buffer: ", file_name)
                     print_wav_info(header)
 
-                data = read_wav_samples(file_name, header, num_wavetables)
+                var data = read_wav_samples(file_name, header, num_wavetables)
                 
                 return Buffer(data^, MFloat[](header.sample_rate))
                 
@@ -294,7 +296,7 @@ struct Buffer(Movable, Copyable):
 
 struct SpanInterpolator(Movable, Copyable):
     """
-    A collection of static methods for interpolating values from a `List[Float64]` or `InlineArray[Float64]`.
+    A collection of static methods for interpolating values from a `List[Float64]` or `Array[Float64]`.
     
     `SpanInterpolator` supports various interpolation methods including
     
@@ -372,13 +374,13 @@ struct SpanInterpolator(Movable, Copyable):
             The sample value at the requested index.
         """
 
-        idx = Int(f_idx)
+        var idx = Int(f_idx)
         return SpanInterpolator.read_none[num_chans,bWrap,mask](data, idx)
     
     @always_inline
     @staticmethod
     def read_none[num_chans: Int = 1, bWrap: Bool = True, mask: Int = 0](data: Span[MFloat[num_chans], ...], idx: Int) -> MFloat[num_chans]:
-        idx2 = idx
+        var idx2 = idx
         comptime if bWrap:
             comptime if mask != 0:
                 idx2 = idx2 & mask
@@ -405,15 +407,17 @@ struct SpanInterpolator(Movable, Copyable):
         Returns:
             The linearly interpolated sample value.
         """
-        idx0: Int = Int(f_idx)
-        idx1: Int = idx0 + 1
-        frac: Float64 = f_idx - Float64(idx0)
+        var idx0: Int = Int(f_idx)
+        var idx1: Int = idx0 + 1
+        var frac: Float64 = f_idx - Float64(idx0)
+        var y0: MFloat[num_chans]
+        var y1: MFloat[num_chans]
         comptime if bWrap:
             comptime if mask != 0:
                 idx0 = idx0 & mask
                 idx1 = idx1 & mask
             else:
-                length = len(data)
+                var length = len(data)
                 idx0 = idx0 % length
                 idx1 = idx1 % length
             
@@ -444,11 +448,13 @@ struct SpanInterpolator(Movable, Copyable):
         Returns:
             The quadratically interpolated sample value.
         """
-
-        idx0 = Int(f_idx)
-        idx1 = idx0 + 1
-        idx2 = idx0 + 2
-        frac: Float64 = f_idx - Float64(idx0)
+        var idx0 = Int(f_idx)
+        var idx1 = idx0 + 1
+        var idx2 = idx0 + 2
+        var frac: Float64 = f_idx - Float64(idx0)
+        var y0: MFloat[num_chans]
+        var y1: MFloat[num_chans]
+        var y2: MFloat[num_chans]
 
         comptime if bWrap:
             comptime if mask != 0:
@@ -456,7 +462,7 @@ struct SpanInterpolator(Movable, Copyable):
                 idx1 = idx1 & mask
                 idx2 = idx2 & mask
             else:
-                length = len(data)
+                var length = len(data)
                 idx0 = idx0 % length
                 idx1 = idx1 % length
                 idx2 = idx2 % length
@@ -489,11 +495,15 @@ struct SpanInterpolator(Movable, Copyable):
         Returns:
             The cubically interpolated sample value.
         """
-        idx1 = Int(f_idx)
-        idx0 = idx1 - 1
-        idx2 = idx1 + 1
-        idx3 = idx1 + 2
-        frac: Float64 = f_idx - Float64(idx1)
+        var idx1 = Int(f_idx)
+        var idx0 = idx1 - 1
+        var idx2 = idx1 + 1
+        var idx3 = idx1 + 2
+        var y0: MFloat[num_chans]
+        var y1: MFloat[num_chans]
+        var y2: MFloat[num_chans]
+        var y3: MFloat[num_chans]
+        var frac: Float64 = f_idx - Float64(idx1)
 
         comptime if bWrap:
             comptime if mask != 0:
@@ -502,7 +512,7 @@ struct SpanInterpolator(Movable, Copyable):
                 idx2 = idx2 & mask
                 idx3 = idx3 & mask
             else:
-                length = len(data)
+                var length = len(data)
                 idx0 = idx0 % length
                 idx1 = idx1 % length
                 idx2 = idx2 % length
@@ -538,12 +548,17 @@ struct SpanInterpolator(Movable, Copyable):
             The fourth-order Lagrange interpolated sample value.
         """
        
-        idx0 = Int(f_idx)
-        idx1 = idx0 + 1
-        idx2 = idx0 + 2
-        idx3 = idx0 + 3
-        idx4 = idx0 + 4
-        frac: Float64 = f_idx - Float64(idx0)
+        var idx0 = Int(f_idx)
+        var idx1 = idx0 + 1
+        var idx2 = idx0 + 2
+        var idx3 = idx0 + 3
+        var idx4 = idx0 + 4
+        var y0: MFloat[num_chans]
+        var y1: MFloat[num_chans]
+        var y2: MFloat[num_chans]
+        var y3: MFloat[num_chans]
+        var y4: MFloat[num_chans]
+        var frac: Float64 = f_idx - Float64(idx0)
 
         comptime if bWrap:
             comptime if mask != 0:
@@ -553,7 +568,7 @@ struct SpanInterpolator(Movable, Copyable):
                 idx3 = idx3 & mask
                 idx4 = idx4 & mask
             else:
-                length = len(data)
+                var length = len(data)
                 idx0 = idx0 % length
                 idx1 = idx1 % length
                 idx2 = idx2 % length

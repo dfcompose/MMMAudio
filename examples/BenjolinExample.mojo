@@ -136,7 +136,7 @@ struct Benjolin(Movable, Copyable):
         self.filter_outputs[7] = self.filters[7].highshelf(pwm,(self.rungler*self.runglerFiltMul)+self.filterFreq,self.q,ampdb(self.gain))
         self.filter_outputs[8] = self.filters[8].lowshelf(pwm,(self.rungler*self.runglerFiltMul)+self.filterFreq,self.q,ampdb(self.gain))
         
-        var filter_output = select(self.filterType,self.filter_outputs) * dbamp(-12.0)
+        var filter_output = select(self.filterType, self.filter_outputs) * dbamp(Float64(-12.0))
         filter_output = sanitize(filter_output)
         var output = MFloat[2](0.0, 0.0)
         output[0] = select(self.outSignalL, tri1, pulse1, tri2, pulse2, pwm, self.sh[0], filter_output)

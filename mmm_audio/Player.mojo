@@ -148,7 +148,7 @@ struct Play(Movable, Copyable):
     @always_inline
     def get_sample[num_chans: Int, interp: Interp, bWrap: Bool = False](self, buf: Buffer, prev_phase: Float64, start_chan: Int) -> MFloat[num_chans]:
         
-        out = MFloat[num_chans](0.0)
+        var out = MFloat[num_chans](0.0)
         comptime for out_chan in range(num_chans):
             out[out_chan] = buf.at_phase[interp=interp, bWrap=bWrap](self.world, start_chan + out_chan, self.impulse.phase + self.phase_offset, prev_phase)
         return out

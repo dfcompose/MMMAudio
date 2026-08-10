@@ -135,7 +135,7 @@ struct Poly(Movable, Copyable):
         call_back: def(mut poly_object: T, trig: Bool) capturing -> None
     ) -> Int:
         self._reset[audio_control = 0](poly_objects)
-        voice_index = self.find_voice_and_trigger(poly_objects, trig)
+        var voice_index = self.find_voice_and_trigger(poly_objects, trig)
         if voice_index != -1:
             call_back(poly_objects[voice_index], trig)
         return voice_index
@@ -175,45 +175,49 @@ struct Poly(Movable, Copyable):
         """
 
         self._reset[audio_control = 1](poly_objects)
-        vals = List[Int]()
+        var vals = List[Int]()
+        var trig: Bool = False
         for i in range(self.num_voices):
             trig = self.m.notify_update(String(i), vals)
             # if we received a trig, find and play a free voice
             if trig:
-                free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
+                var free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
                 if free_voice != -1:
                     call_back(poly_objects[free_voice], vals)
     
     def next_mtrig[T: PolyObject, call_back: def (mut poly_object: T, mut vals: List[Float64]) capturing -> None](mut self, mut poly_objects: List[T]):
         self._reset[audio_control = 1](poly_objects)
-        vals = List[Float64]()
+        var trig: Bool = False
+        var vals = List[Float64]()
         for i in range(self.num_voices):
             trig = self.m.notify_update(String(i), vals)
             # if we received a trig, find and play a free voice
             if trig:
-                free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
+                var free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
                 if free_voice != -1:
                     call_back(poly_objects[free_voice], vals)
 
     def next_mtrig[T: PolyObject, call_back: def (mut poly_object: T, mut val: Int) capturing -> None](mut self, mut poly_objects: List[T]):
         self._reset[audio_control = 1](poly_objects)
-        val: Int = 0
+        var val: Int = 0
+        var trig: Bool = False
         for i in range(self.num_voices):
             trig = self.m.notify_update(String(i), val)
             # if we received a trig, find and play a free voice
             if trig:
-                free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
+                var free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
                 if free_voice != -1:
                     call_back(poly_objects[free_voice], val)
     
     def next_mtrig[T: PolyObject, call_back: def (mut poly_object: T, mut val: Float64) capturing -> None](mut self, mut poly_objects: List[T]):
         self._reset[audio_control = 1](poly_objects)
-        val: Float64 = 0.0
+        var trig: Bool = False
+        var val: Float64 = 0.0
         for i in range(self.num_voices):
             trig = self.m.notify_update(String(i), val)
             # if we received a trig, find and play a free voice
             if trig:
-                free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
+                var free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
                 if free_voice != -1:
                     call_back(poly_objects[free_voice], val)
 
@@ -232,7 +236,7 @@ struct Poly(Movable, Copyable):
         """
         self._reset[audio_control = 0](poly_objects)
         for i in range(len(gate_sigs)):
-            changed = self.changes[i].next(gate_sigs[i])
+            var changed = self.changes[i].next(gate_sigs[i])
             if changed:
                 if gate_sigs[i]: # if the signal went from False to True, trigger the note on for that gate
                     return self._find_voice_and_open_gate(poly_objects, changed, Int(i))
@@ -258,17 +262,18 @@ struct Poly(Movable, Copyable):
         """
         self._reset[audio_control = 1](poly_objects)
         if self.world[].top_of_block():
-            vals = List[Int]()
+            var vals = List[Int]()
+            var trig: Bool = False
             for i in range(self.num_voices):
                 trig = self.m.notify_update(String(i), vals)
                 if trig:
                     if vals[1] > 0: # if the velocity is greater than 0, trigger the note on
-                        free_voice = self._find_voice_and_open_gate(poly_objects, trig, vals[0]) # get the index of the free voice
+                        var free_voice = self._find_voice_and_open_gate(poly_objects, trig, vals[0]) # get the index of the free voice
                         if free_voice >= 0:
                             call_back(poly_objects[free_voice], vals)
                     else: # if the velocity is 0, trigger the note off for that note
                         # close the gate for the voice that is playing and forget that is was playing
-                        freed_voice = self._close_gate(poly_objects, vals[0])
+                        var freed_voice = self._close_gate(poly_objects, vals[0])
                         if freed_voice >= 0:
                             call_back(poly_objects[freed_voice], vals)
 
@@ -283,9 +288,10 @@ struct Poly(Movable, Copyable):
 
         if self.world[].top_of_block():
             var vals = List[Float64]() 
+            var trig: Bool = False
             
             for i in range(self.num_voices):
-                var trig = self.m.notify_update(String(i), vals) 
+                trig = self.m.notify_update(String(i), vals) 
                 
                 if trig:
                     if vals[1] > 0.0: 
@@ -320,9 +326,10 @@ struct Poly(Movable, Copyable):
 
     @doc_hidden
     def _find_free_voice[T: PolyObject](mut self, mut poly_objects: List[T], trig: Bool) -> Int:
-        trigger_grain = -1
+        var trigger_grain = -1
+        var add_voice_bool = False
         if trig:
-            list_len = len(self.active_list)
+            var list_len = len(self.active_list)
             trigger_grain, add_voice_bool = self._find_voice(list_len)
             if add_voice_bool:
                     trigger_grain = -1
@@ -332,8 +339,8 @@ struct Poly(Movable, Copyable):
 
     @doc_hidden
     def _find_voice(mut self, list_len: Int) -> Tuple[Int, Bool]:
-        found = False
-        counter = 0
+        var found = False
+        var counter = 0
         while not found and counter < list_len:
             if not self.active_list[counter]:
                 found = True
@@ -347,7 +354,7 @@ struct Poly(Movable, Copyable):
             return (counter, True) 
 
     def find_voice_and_trigger[T: PolyObject](mut self, mut poly_objects: List[T], trig: Bool) -> Int:
-        trigger_grain = self._find_free_voice(poly_objects, trig)
+        var trigger_grain = self._find_free_voice(poly_objects, trig)
 
         if trigger_grain != -1:
             poly_objects[trigger_grain].set_trigger(True)
@@ -356,13 +363,13 @@ struct Poly(Movable, Copyable):
 
     @doc_hidden
     def _find_voice_and_open_gate[T: PolyObject](mut self, mut poly_objects: List[T], trig: Bool, key: String) -> Int:
-        trigger_grain = self._find_free_voice(poly_objects, trig)
+        var trigger_grain = self._find_free_voice(poly_objects, trig)
         if trigger_grain != -1:
             self._open_gate(poly_objects, key, trigger_grain)
         return trigger_grain
 
     def _find_voice_and_open_gate[T: PolyObject](mut self, mut poly_objects: List[T], trig: Bool, key: Int) -> Int:
-        trigger_grain = self._find_free_voice(poly_objects, trig)
+        var trigger_grain = self._find_free_voice(poly_objects, trig)
         if trigger_grain != -1:
             self._open_gate(poly_objects, key, trigger_grain)
         return trigger_grain
@@ -379,21 +386,21 @@ struct Poly(Movable, Copyable):
 
     @doc_hidden
     def _close_gate[T: PolyObject](mut self, mut poly_objects: List[T], key: String) -> Int:
-        active_list_index = self.string_dict.pop(key, -1)
+        var active_list_index = self.string_dict.pop(key, -1)
         if active_list_index != -1:
             poly_objects[active_list_index].set_gate(False)
         return active_list_index
 
     @doc_hidden
     def _close_gate[T: PolyObject](mut self, mut poly_objects: List[T], key: Int) -> Int:
-        active_list_index = self.int_dict.pop(key, -1)
+        var active_list_index = self.int_dict.pop(key, -1)
         if active_list_index != -1:
             poly_objects[active_list_index].set_gate(False)
         return active_list_index
 
 from mmm_audio import *
 
-trait GrainObject(PolyObject, ImplicitlyDeletable):
+trait GrainObject(PolyObject, Deinitable):
     """Trait for objects that can be used as grains in the TGrains struct for triggered granular synthesis."""
 
     def __init__(out self, world: World):
@@ -615,23 +622,23 @@ struct GrainAll(GrainObject):
             A multi-channel sample of the grain. The number of channels is the same as the number of channels in the buffer.
         """
 
-        phase = self.line.next(0.0, 1.0, self.dur, self.trigger)
+        var phase = self.line.next(0.0, 1.0, self.dur, self.trigger)
         if self.trigger:
             self.buf_phase = self.start_frame / Float64(buffer.num_frames)
 
-        phase_diff = self.line.freq * self.line.freq_mul
+        var phase_diff = self.line.freq * self.line.freq_mul
         self.prev_phase = phase
         
         self.buf_phase = self.buf_phase + phase_diff * self.buf_ratio / buffer.duration
         
         # (phase * self.buf_ratio)/buffer.duration + (self.start_frame / Float64(buffer.num_frames))
 
-        sample = buf_read[interp=Interp.linear, bWrap=bWrap](self.world, buffer, self.buf_phase)
+        var sample = buf_read[interp=Interp.linear, bWrap=bWrap](self.world, buffer, self.buf_phase)
 
         comptime if win_type == WindowType.user_defined:
-            win = env[win_type=custom_curve](self.world, phase, self.user_defined_env, self.curve)
+            var win = env[win_type=custom_curve](self.world, phase, self.user_defined_env, self.curve)
         else:
-            win = win_read[win_type, Interp.linear](self.world, phase)
+            var win = win_read[win_type, Interp.linear](self.world, phase)
 
         if phase >= 1.0:
             self.active = False
@@ -734,10 +741,10 @@ struct Grain(GrainObject):
         var sample = self.grain.next_all[win_type=win_type, custom_curve=custom_curve, bWrap=bWrap](buffer)
 
         comptime if num_playback_chans == 1:
-            panned = pan2(sample[self.start_chan], self.grain.pan)
+            var panned = pan2(sample[self.start_chan], self.grain.pan)
             return panned
         else:
-            panned = pan_stereo(MFloat[2](sample[self.start_chan], sample[(self.start_chan + 1) % buffer.get_num_chans()]), self.grain.pan) 
+            var panned = pan_stereo(MFloat[2](sample[self.start_chan], sample[(self.start_chan + 1) % buffer.get_num_chans()]), self.grain.pan) 
             return panned
 
     def next_multi_channel[num_buf_chans: Int, num_speakers: Int = 2, num_simd_chans: Int = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
@@ -760,7 +767,7 @@ struct Grain(GrainObject):
         """
         var sample = self.grain.next_all[win_type=win_type, custom_curve=custom_curve, bWrap=bWrap](buffer)
 
-        panned = pan_az[num_speakers, num_simd_chans, 2, 0.5](sample[buffer_chan], self.grain.pan) 
+        var panned = pan_az[num_speakers, num_simd_chans, 2, 0.5](sample[buffer_chan], self.grain.pan) 
 
         return panned
 
@@ -835,7 +842,7 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
             self.num_grains = new_num_grains
 
     def set_env_points(mut self, env_points: Span[Tuple[Float64, Float64], ...]):
-        """Set the envelope points for all grains by providing Span (List or InlineArray) of tuples. This allows you to use a custom envelope shape instead of the built-in window types. Will update each grain on its next trigger. The tuples should be in the format (x, y), where x is the position in the grain from 0.0 to 1.0 and y is the amplitude at that point. For example, set_env_points((0.0, 0.0), (0.5, 1.0), (1.0, 0.0)) would be a simple triangle envelope.
+        """Set the envelope points for all grains by providing Span (List or Array) of tuples. This allows you to use a custom envelope shape instead of the built-in window types. Will update each grain on its next trigger. The tuples should be in the format (x, y), where x is the position in the grain from 0.0 to 1.0 and y is the amplitude at that point. For example, set_env_points((0.0, 0.0), (0.5, 1.0), (1.0, 0.0)) would be a simple triangle envelope.
 
         Args:
             env_points: A List or other Span of tuples defining the envelope shape.
@@ -896,7 +903,7 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
             Output samples for the left and right channels.
         """
 
-        out = MFloat[2](0.0)
+        var out = MFloat[2](0.0)
         for i in range(len(self.grains)):
             if self.poly.active_list[i]: 
                 out += self.grains[i].next_2[num_playback_chans=num_playback_chans, win_type=Self.win_type, custom_curve=Self.custom_curve, bWrap=bWrap](buffer)
@@ -921,7 +928,7 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
             A multi-channel sample of the grain with azimuth panning applied.
         """
 
-        out = MFloat[num_simd_chans](0.0)
+        var out = MFloat[num_simd_chans](0.0)
         for i in range(len(self.grains)):
             if self.poly.active_list[i]: 
                 out += self.grains[i].next_multi_channel[num_speakers=num_speakers, num_simd_chans=num_simd_chans, win_type=Self.win_type, custom_curve=Self.custom_curve, bWrap=bWrap](buffer, buffer_chan)
@@ -943,7 +950,7 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
             Output samples for left and right channels as a SIMD vector.
         """
 
-        out = MFloat[num_chans](0.0)
+        var out = MFloat[num_chans](0.0)
         for i in range(len(self.grains)):
             if self.poly.active_list[i]: 
                 out += self.grains[i].next_all[win_type=Self.win_type, custom_curve=Self.custom_curve, bWrap=bWrap](buffer)
@@ -1022,12 +1029,12 @@ struct PitchShift[num_chans: Int = 1, win_type: WindowType = WindowType.hann](Mo
 
         self.recorder.write_next(in_sig)
 
-        time_dispersion2 = clip(time_dispersion, 0.0, 0.999)
+        var time_dispersion2 = clip(time_dispersion, 0.0, 0.999)
 
-        trig_rate = Float64(overlaps) / grain_dur
+        var trig_rate = Float64(overlaps) / grain_dur
 
-        trig = self.dust.next_bool(trig_rate*(1-time_dispersion2), trig_rate*(1+time_dispersion2), trig = MBool[1](fill=True))
-        grain_num = self.tgrains.trig(trig)
+        var trig = self.dust.next_bool(trig_rate*(1-time_dispersion2), trig_rate*(1+time_dispersion2), trig = MBool[1](fill=True))
+        var grain_num = self.tgrains.trig(trig)
 
         if grain_num >= 0:
             

@@ -20,7 +20,7 @@ struct WhiteNoise[num_chans: Int = 1](Copyable, Movable):
             A random value between -gain and gain.
         """
         # Generate random value between -1 and 1, then scale by gain
-        return rrand[Self.num_chans](-1.0, 1.0) * gain
+        return rrand(MFloat[Self.num_chans](-1.0), MFloat[Self.num_chans](1.0)) * gain
 
 struct PinkNoise[num_chans: Int = 1](Copyable, Movable):
     """Generate pink noise samples.
@@ -59,7 +59,7 @@ struct PinkNoise[num_chans: Int = 1](Copyable, Movable):
             The next pink noise sample scaled by gain.
         """
         # Generate white noise SIMD
-        var white = rrand[Self.num_chans](-1.0, 1.0)
+        var white = rrand(MFloat[Self.num_chans](-1.0), MFloat[Self.num_chans](1.0))
 
         # Filter white noise to get pink noise (Voss-McCartney algorithm)
         self.b0 = self.b0 * 0.99886 + white * 0.0555179
@@ -98,7 +98,7 @@ struct BrownNoise[num_chans: Int = 1](Copyable, Movable):
             The next brown noise sample scaled by gain.
         """
         # Generate white noise SIMD
-        var white = rrand[Self.num_chans](-1.0, 1.0)
+        var white = rrand(MFloat[Self.num_chans](-1.0), MFloat[Self.num_chans](1.0))
 
         # Integrate white noise to get brown noise
         self.last_output += (white - self.last_output) * 0.02
@@ -137,15 +137,15 @@ struct TExpRand[num_chans: Int = 1](Copyable, Movable):
         """
         
         if not self.is_initialized: 
-            comptime for i in range(Self.num_chans):
-                self.stored_output[i] = exprand(min[i], max[i])
+            self.stored_output = exprand(min, max)
             self.is_initialized = True
             return self.stored_output
         
-        rising_edge: MBool[Self.num_chans] = trig & ~self.last_trig
+        var rising_edge: MBool[Self.num_chans] = trig & ~self.last_trig
+        var randi = exprand(min, max)
         comptime for i in range(Self.num_chans):
             if rising_edge[i]:
-                self.stored_output[i] = exprand(min[i], max[i])
+                self.stored_output[i] = randi[i]
         self.last_trig = trig
         return self.stored_output
 
@@ -187,7 +187,7 @@ struct TRand[num_chans: Int = 1](Copyable, Movable):
             self.is_initialized = True
             return self.stored_output
 
-        rising_edge: MBool[Self.num_chans] = trig & ~self.last_trig
+        var rising_edge: MBool[Self.num_chans] = trig & ~self.last_trig
         comptime for i in range(Self.num_chans):
             if rising_edge[i]:
                 self.stored_output[i] = random_float64(min[i], max[i])

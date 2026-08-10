@@ -12,7 +12,7 @@ struct TestSplay(Movable, Copyable):
     var freqs: List[Float64]
     var mult: Float64
     # var samples: List[MFloat[2]]
-    var samples: InlineArray[MFloat[2], num_osc]
+    var samples: Array[MFloat[2], num_osc]
 
     def __init__(out self, world: World):
         self.world = world
@@ -20,7 +20,7 @@ struct TestSplay(Movable, Copyable):
         self.freqs = [rrand(100.0, 2000.0) for _ in range(num_osc)]
         self.mult = 0.2 / Float64(num_osc)
         # self.samples = [MFloat[2](0.0) for _ in range(num_osc)]
-        self.samples = InlineArray[MFloat[2], num_osc](fill=0.0)
+        self.samples = Array[MFloat[2], num_osc](fill=0.0)
 
     def next(mut self) -> MFloat[simd_out_size]:
         for i in range(num_osc):

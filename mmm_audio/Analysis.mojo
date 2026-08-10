@@ -4,7 +4,9 @@ from std.math import atan2, ceil, floor, log2, log, exp, sin, sqrt, cos, pi, inf
 @always_inline
 @doc_hidden
 def parabolic_refine(prev: Float64, cur: Float64, next: Float64) -> Tuple[Float64, Float64]:
-    denom = prev - 2.0 * cur + next
+    var p: Float64
+    var refined_val: Float64
+    var denom = prev - 2.0 * cur + next
     if abs(denom) < 1e-12:
         return (0.0, cur)
     p = 0.5 * (prev - next) / denom
@@ -190,6 +192,7 @@ struct YIN(BufferedProcessable,GetFloat64Featurable):
 
         # cumulative mean normalized difference function
         var tmp_sum: Float64 = 0.0
+        var raw_val: Float64 = 0.0
         for i in range(1, len(frame)):
             raw_val = self.yin_values[i]
             tmp_sum += raw_val
@@ -276,7 +279,7 @@ struct YIN(BufferedProcessable,GetFloat64Featurable):
         Raises:
             An error if the analysis fails for any reason.
         """
-        yin_proc = YIN(buf.sample_rate, window_size=window_size, min_freq=min_freq, max_freq=max_freq)
+        var yin_proc = YIN(buf.sample_rate, window_size=window_size, min_freq=min_freq, max_freq=max_freq)
         return MBufAnalysis.buffered_process(yin_proc, buf, chan, start_frame, num_frames, window_size, hop_size, padding=padding, window_type=WindowType.hann)
 
 struct SpectralCentroid(FFTProcessable, GetFloat64Featurable):
@@ -398,7 +401,7 @@ struct SpectralCentroid(FFTProcessable, GetFloat64Featurable):
         Raises:
             An error if the analysis fails for any reason.
         """
-        sc_proc = SpectralCentroid(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, power_mag=power_mag)
+        var sc_proc = SpectralCentroid(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, power_mag=power_mag)
         return MBufAnalysis.fft_process(sc_proc, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.hann, padding=padding)
 
 struct SpectralSpread(FFTProcessable, GetFloat64Featurable):
@@ -511,7 +514,7 @@ struct SpectralSpread(FFTProcessable, GetFloat64Featurable):
         Raises:
             An error if the analysis fails for any reason.
         """
-        ss_proc = SpectralSpread(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
+        var ss_proc = SpectralSpread(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
         return MBufAnalysis.fft_process(ss_proc, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.hann, padding=padding)
 
 struct SpectralSkewness(FFTProcessable, GetFloat64Featurable):
@@ -631,7 +634,7 @@ struct SpectralSkewness(FFTProcessable, GetFloat64Featurable):
         Raises:
             Raises an error if the analysis fails for any reason.
         """
-        sk = SpectralSkewness(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
+        var sk = SpectralSkewness(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
         return MBufAnalysis.fft_process(sk, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.hann, padding=padding)
 
 struct SpectralKurtosis(FFTProcessable, GetFloat64Featurable):
@@ -753,7 +756,7 @@ struct SpectralKurtosis(FFTProcessable, GetFloat64Featurable):
         Raises:
             Error: If analysis fails.
         """
-        sk = SpectralKurtosis(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
+        var sk = SpectralKurtosis(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
         return MBufAnalysis.fft_process(sk, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.hann, padding=padding)
 
 
@@ -887,7 +890,7 @@ struct SpectralRolloff(FFTProcessable, GetFloat64Featurable):
         Raises:
             Error: If analysis fails.
         """
-        sr_proc = SpectralRolloff(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, rolloff_target=rolloff_target, log_freq=log_freq, power_mag=power_mag)
+        var sr_proc = SpectralRolloff(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, rolloff_target=rolloff_target, log_freq=log_freq, power_mag=power_mag)
         return MBufAnalysis.fft_process(sr_proc, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.hann, padding=padding)
 
 struct SpectralFlatness(FFTProcessable, GetFloat64Featurable):
@@ -993,7 +996,7 @@ struct SpectralFlatness(FFTProcessable, GetFloat64Featurable):
         Raises:
             Error: If analysis fails.
         """
-        sf_proc = SpectralFlatness(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
+        var sf_proc = SpectralFlatness(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
         return MBufAnalysis.fft_process(sf_proc, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.hann, padding=padding)
 
 struct SpectralCrest(FFTProcessable, GetFloat64Featurable):
@@ -1098,7 +1101,7 @@ struct SpectralCrest(FFTProcessable, GetFloat64Featurable):
         Raises:
             An error if the analysis fails for any reason.
         """
-        sc_proc = SpectralCrest(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
+        var sc_proc = SpectralCrest(buf.sample_rate, min_freq=min_freq, max_freq=max_freq, log_freq=log_freq, power_mag=power_mag)
         return MBufAnalysis.fft_process(sc_proc, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.hann, padding=padding)
 
 struct RMS(BufferedProcessable, GetFloat64Featurable):
@@ -1143,14 +1146,14 @@ struct RMS(BufferedProcessable, GetFloat64Featurable):
         Returns:
             Float64. The computed RMS value.
         """
-        sum_sq: Float64 = 0.0
+        var sum_sq: Float64 = 0.0
         for v in frame:
             sum_sq += v * v
         return sqrt(sum_sq / Float64(len(frame)))
 
     @staticmethod
     def buf_analysis(buf: Buffer, chan: Int = 0, start_frame: Int = 0, var num_frames: Optional[Int] = None, window_size: Int = 1024, hop_size: Int = 512, padding: Padding = Padding.half_window) raises -> List[List[Float64]]:
-        rms = RMS()
+        var rms = RMS()
         return MBufAnalysis.buffered_process(rms, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.none, padding=padding)
 
 
@@ -1226,7 +1229,7 @@ struct MelBands(FFTProcessable, GetFloat64Featurable):
             mags: The input magnitudes as a List of Float64.
         """
         for i in range(self.num_bands):
-            band_energy: Float64 = 0.0
+            var band_energy: Float64 = 0.0
             for j in range(len(mags)):
                 var mag_val: Float64
                 if self.power == 1.0:
@@ -1242,19 +1245,19 @@ struct MelBands(FFTProcessable, GetFloat64Featurable):
     def make_weights(mut self):
         """Compute the mel filter bank weights."""
 
-        fftfreqs = RealFFT.fft_frequencies(sr=self.sr, n_fft=self.fft_size)
+        var fftfreqs = RealFFT.fft_frequencies(sr=self.sr, n_fft=self.fft_size)
 
         # 'Center freqs' of mel bands - uniformly spaced between limits
-        mel_f = MelBands.mel_frequencies(self.num_bands + 2, fmin=self.min_freq, fmax=self.max_freq)
+        var mel_f = MelBands.mel_frequencies(self.num_bands + 2, fmin=self.min_freq, fmax=self.max_freq)
 
-        fdiff = diff(mel_f)
-        ramps = subtract_outer(mel_f, fftfreqs)
+        var fdiff = diff(mel_f)
+        var ramps = subtract_outer(mel_f, fftfreqs)
 
         for i in range(self.num_bands):
-            lower: List[Float64] = List[Float64](length=len(ramps[i]), fill=0.0)
+            var lower: List[Float64] = List[Float64](length=len(ramps[i]), fill=0.0)
             for j in range(len(ramps[i])):
                 lower[j] = -ramps[i][j] / fdiff[i]
-            upper: List[Float64] = List[Float64](length=len(ramps[i]), fill=0.0)
+            var upper: List[Float64] = List[Float64](length=len(ramps[i]), fill=0.0)
             for j in range(len(ramps[i])):
                 upper[j] = ramps[i + 2][j] / fdiff[i + 1]
 
@@ -1285,10 +1288,10 @@ struct MelBands(FFTProcessable, GetFloat64Featurable):
             A List of Float64 representing the center frequencies of each mel band.
         """
 
-        min_mel = MelBands.hz_to_mel(fmin)
-        max_mel = MelBands.hz_to_mel(fmax)
+        var min_mel = MelBands.hz_to_mel(fmin)
+        var max_mel = MelBands.hz_to_mel(fmax)
 
-        mels = linspace(min_mel, max_mel, n_mels)
+        var mels = linspace(min_mel, max_mel, n_mels)
 
         var hz = List[Float64](length=n_mels, fill=0.0)
         for i in range(n_mels):
@@ -1316,14 +1319,14 @@ struct MelBands(FFTProcessable, GetFloat64Featurable):
         # if htk:
         #     return 2595.0 * log10(1.0 + freq / 700.0)
 
-        f_min = 0.0
-        f_sp = 200.0 / 3
+        var f_min = 0.0
+        var f_sp = 200.0 / 3
 
-        mels = (freq - f_min) / f_sp
+        var mels = (freq - f_min) / f_sp
 
-        min_log_hz = 1000.0  # beginning of log region (Hz)
-        min_log_mel = (min_log_hz - f_min) / f_sp  # same (Mels)
-        logstep = log(6.4) / 27.0  # step size for log region
+        var min_log_hz = 1000.0  # beginning of log region (Hz)
+        var min_log_mel = (min_log_hz - f_min) / f_sp  # same (Mels)
+        var logstep = log(6.4) / 27.0  # step size for log region
 
         if freq >= min_log_hz:
             mels = min_log_mel + log(freq / min_log_hz) / logstep
@@ -1352,14 +1355,14 @@ struct MelBands(FFTProcessable, GetFloat64Featurable):
         #     return 700.0 * (10.0 ** (mel / 2595.0) - 1.0)
 
         # Fill in the linear scale
-        f_min = 0.0
-        f_sp = 200.0 / 3
-        freq = f_min + f_sp * mel
+        var f_min = 0.0
+        var f_sp = 200.0 / 3
+        var freq = f_min + f_sp * mel
 
         # And now the nonlinear scale
-        min_log_hz = 1000.0  # beginning of log region (Hz)
-        min_log_mel = (min_log_hz - f_min) / f_sp  # same (Mels)
-        logstep = log(6.4) / 27.0  # step size for log region
+        var min_log_hz = 1000.0  # beginning of log region (Hz)
+        var min_log_mel = (min_log_hz - f_min) / f_sp  # same (Mels)
+        var logstep = log(6.4) / 27.0  # step size for log region
 
         if mel >= min_log_mel:
             freq = min_log_hz * exp(logstep * (mel - min_log_mel))
@@ -1368,7 +1371,7 @@ struct MelBands(FFTProcessable, GetFloat64Featurable):
 
     @staticmethod
     def buf_analysis(buf: Buffer, chan: Int = 0, start_frame: Int = 0, var num_frames: Optional[Int] = None, num_bands: Int = 40, min_freq: Float64 = 20.0, max_freq: Float64 = 20000.0, power: Float64 = 2.0, window_size: Int = 1024, hop_size: Int = 512, padding: Padding = Padding.half_window) raises -> List[List[Float64]]:
-        mb = MelBands(buf.sample_rate, num_bands, min_freq, max_freq, fft_size=window_size, power=power)
+        var mb = MelBands(buf.sample_rate, num_bands, min_freq, max_freq, fft_size=window_size, power=power)
         return MBufAnalysis.fft_process(mb, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.hann, padding=padding)
 
 struct MFCC(FFTProcessable, GetFloat64Featurable):
@@ -1486,7 +1489,7 @@ struct MFCC(FFTProcessable, GetFloat64Featurable):
 
     @staticmethod
     def buf_analysis(buf: Buffer, chan: Int = 0, start_frame: Int = 0, var num_frames: Optional[Int] = None, num_coeffs: Int = 13, num_bands: Int = 40, min_freq: Float64 = 20.0, max_freq: Float64 = 20000.0, window_size: Int = 1024, hop_size: Int = 512, padding: Padding = Padding.half_window) raises -> List[List[Float64]]:
-        mfcc = MFCC(buf.sample_rate, num_coeffs, num_bands, min_freq, max_freq, window_size)
+        var mfcc = MFCC(buf.sample_rate, num_coeffs, num_bands, min_freq, max_freq, window_size)
         return MBufAnalysis.fft_process(mfcc, buf, chan, start_frame, num_frames, window_size, hop_size, window_type=WindowType.hann, padding=padding)
 
 struct DCT(Movable,Copyable):
@@ -1633,7 +1636,7 @@ struct TopNFreqs(FFTProcessable, GetFloat64Featurable):
     var output_peak_indices: List[Int]
     
     def get_features(self) -> List[Float64]:
-        state = List[Float64]()
+        var state = List[Float64]()
         for pair in self.freq_amp_pairs:
             state.append(pair[0]) # freq
             state.append(pair[1]) # amp
@@ -1670,10 +1673,16 @@ struct TopNFreqs(FFTProcessable, GetFloat64Featurable):
         pass
 
     def next_frame(mut self, mut mags: List[MFloat[]], mut phases: List[MFloat[]]) -> None:
-        n_valid_peaks = self.top_n_peaks.process(mags, self.num_peaks, self.output_peak_indices, self.thresh)
+        var n_valid_peaks = self.top_n_peaks.process(mags, self.num_peaks, self.output_peak_indices, self.thresh)
 
+        var a_db: MFloat[4]
+        var val: Float64
+        var mag_db: Float64
+        var offset: Float64
+        var freq: Float64
+        var mag_linear: Float64
         for i in range(self.num_peaks):
-            index = self.output_peak_indices[i]
+            var index = self.output_peak_indices[i]
             if i < n_valid_peaks:
                 a_db = ampdb(MFloat[4](mags[index-1], mags[index], mags[index+1], 0.0))
                 val, mag_db = find_quadratic_peak(a_db[0], a_db[1], a_db[2])
@@ -1871,5 +1880,5 @@ struct Chroma(FFTProcessable, GetFloat64Featurable):
 
     @staticmethod
     def buf_analysis(buf: Buffer, chan: Int = 0, start_frame: Int = 0, var num_frames: Optional[Int] = None, n_chroma: Int = 12, tuning: Float64 = 0.0, norm: Float64 = inf[DType.float64](), power: Float64 = 2.0, ctroct: Float64 = 5.0, octwidth: Float64 = 2.0, base_c: Bool = True, fft_size: Int = 1024, hop_size: Int = 512, padding: Padding = Padding.half_window) raises -> List[List[Float64]]:
-        chroma_proc = Chroma(buf.sample_rate, fft_size, n_chroma=n_chroma, tuning=tuning, norm=norm, power=power, ctroct=ctroct, octwidth=octwidth, base_c=base_c)
+        var chroma_proc = Chroma(buf.sample_rate, fft_size, n_chroma=n_chroma, tuning=tuning, norm=norm, power=power, ctroct=ctroct, octwidth=octwidth, base_c=base_c)
         return MBufAnalysis.fft_process(chroma_proc, buf, chan, start_frame, num_frames, fft_size, hop_size, window_type=WindowType.hann, padding=padding)

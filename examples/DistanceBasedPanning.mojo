@@ -29,25 +29,25 @@ struct DistanceBasedPanning(Movable, Copyable):
         
         # 4 speaker setup
        
-        comptime speakers : InlineArray[MFloat[2], 4] = [
+        comptime speakers : Array[MFloat[2], 4] = [
             MFloat[2](-1, 1),
             MFloat[2](1, 1),
             MFloat[2](-1, -1),
             MFloat[2](1, -1)
         ]
-        comptime weights : InlineArray[Float64, 4] = [
+        comptime weights : Array[Float64, 4] = [
             1,1,1,1
         ]
 
-        sig = self.dust.next(10, 40) * 0.5
+        var sig = self.dust.next(10, 40) * 0.5
         sig = self.filt.bpf(sig, 1200, 10.0, 1.0)
 
-        out = dbap2D[4, max_simd, speakers, weights](sig, self.pos, 0.1)
+        var out = dbap2D[4, max_simd, speakers, weights](sig, self.pos, 0.1)
         
 
         #7 speaker setup
 
-        # comptime speakers : InlineArray[MFloat[2], 7] = [
+        # comptime speakers : Array[MFloat[2], 7] = [
         #     MFloat[2](-0.66, 1),
         #     MFloat[2](0.66, 1),
         #     MFloat[2](0, 1),
@@ -56,7 +56,7 @@ struct DistanceBasedPanning(Movable, Copyable):
         #     MFloat[2](-0.66, -1),
         #     MFloat[2](0.66, -1)
         # ]
-        # comptime weights : InlineArray[Float64, 7] = [
+        # comptime weights : Array[Float64, 7] = [
         #     1,1,1,1,1,1,1
         # ]
 

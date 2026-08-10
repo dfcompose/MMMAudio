@@ -46,7 +46,7 @@ struct ComplexFFTProcessor[T: ComplexFFTProcessable, ifft: Bool = True](Buffered
     def get_messages(mut self) -> None:
         self.process.get_messages()
 
-trait ComplexFFTProcessable(Movable,Copyable, ImplicitlyDestructible):
+trait ComplexFFTProcessable(Movable,Copyable, Deinitable):
     """Implement this trait in a custom struct to pass to `FFTProcess`
     as a Parameter.
 
@@ -92,7 +92,7 @@ struct ComplexFFTProcess[T: ComplexFFTProcessable, ifft: Bool = True,input_windo
         self.world = world
         self.window_size = window_size
         self.hop_size = hop_size
-        p = ComplexFFTProcessor[Self.T, Self.ifft](self.world, process=process^, window_size=self.window_size)
+        var p = ComplexFFTProcessor[Self.T, Self.ifft](self.world, process=process^, window_size=self.window_size)
         self.buffered_process = BufferedProcess[ComplexFFTProcessor[Self.T, Self.ifft], output=Self.ifft, input_window_shape=Self.input_window_shape, output_window_shape=Self.output_window_shape](self.world, process=p^,window_size=self.window_size, hop_size=self.hop_size)
 
     def next(mut self, input: Float64) -> Float64:

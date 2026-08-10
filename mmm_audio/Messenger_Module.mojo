@@ -33,15 +33,12 @@ struct Messenger(Copyable, Movable):
 
 
     @doc_hidden
-    def get_name_with_namespace(mut self, name: String) raises -> UnsafePointer[mut=False, String, origin_of(self.key_dict)]:
+    def get_name_with_namespace(mut self, name: String) raises -> Pointer[mut=False, String, origin_of(self.key_dict[name])]:
         if not self.key_dict.__contains__(name):
-            if self.namespace:
-                with_namespace = self.namespace.value() + "." + name
-            else:
-                with_namespace = name
+            var with_namespace = self.namespace.value() + "." + name if self.namespace else name
             self.key_dict[name] = with_namespace
 
-        return UnsafePointer(to=self.key_dict[name]).as_immutable()
+        return Pointer(to=self.key_dict[name])
 
     # def get_name_with_namespace(mut self, name: String) raises -> UnsafePointer[mut=False,String, ...]:
     #     if not self.key_dict.__contains__(name):

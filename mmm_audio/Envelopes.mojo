@@ -5,7 +5,7 @@ This module provides an envelope generator class that can create complex envelop
 
 from mmm_audio import *
 
-def env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none](world: World, x: Float64, points: Span[Tuple[Float64, Float64], ...], curve: Float64 = 1.0) -> Float64:
+def env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none](world: World, x: Float64, points: Span[Tuple[Float64, Float64], MutUntrackedOrigin, address_space = AddressSpace.GENERIC], curve: Float64 = 1.0) -> Float64:
     """Creates an envelope by linearly mapping an input value `x` based on a series of input-output points. This is just a function, so it should be paired with a Line or Phasor UGen to create an envelope generator.
 
     The function takes a variable number of (input, output) pairs and linearly maps the input `x` to the corresponding output value based on which segment of the input range `x` falls into. If `x` is outside the range of the provided points, it will be clamped to the nearest segment.
@@ -13,7 +13,7 @@ def env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none](wo
     There are optional parameters and arguments for applying a curve to the segments. See below for some possibilities:
 
     ```
-    env_points = InlineArray[Tuple[Float64, Float64], 4][(0.0, 0.0), (0.01, 1.0), (0.9, 1.0), (1.0, 0.0)]
+    env_points = Array[Tuple[Float64, Float64], 4][(0.0, 0.0), (0.01, 1.0), (0.9, 1.0), (1.0, 0.0)]
     env(world, x, env_points) # standard linear envelope
     env(world, x, env_points, curve=2.0) # exponential curve
     env(world, x, env_points, curve=0.5) # logarithmic curve
@@ -33,11 +33,12 @@ def env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none](wo
     Returns:
         The mapped output value corresponding to the input `x`.
     """
-    length = len(points)
+    var length = len(points)
     if length < 2:
         return x
     
     # Handle cases where x is outside the range of provided points
+    # var temp = points[0]
     if x <= points[0][0]:
         return points[0][1]
     if x >= points[length-1][0]:
@@ -45,12 +46,12 @@ def env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none](wo
 
     # Find the segment that x falls into
     for i in range(length - 1):
-        x0, y0 = points[i]
-        x1, y1 = points[i + 1]
+        var x0, y0 = points[i]
+        var x1, y1 = points[i + 1]
         if x0 <= x <= x1:
             # normalize x to the range [0, 1] for the segment
             if curve == 1.0:
-                x_scaled1 = ((x - x0) / (x1 - x0))
+                var x_scaled1 = ((x - x0) / (x1 - x0))
                 comptime if win_type != WindowType.none:
                     x_scaled1 = win_read[win_type, interp](world, x_scaled1/2)
                 return y0 + (y1 - y0) * x_scaled1
@@ -156,7 +157,7 @@ struct Env(Movable, Copyable):
         Returns:
             The next envelope value.
         """
-        phase = 0.0
+        var phase = 0.0
         self.eoc = False
         if not self.is_active:
             if self.rising_bool_detector.next(trig):
@@ -219,12 +220,12 @@ struct Env(Movable, Copyable):
     @doc_hidden
     def _apply_phase(mut self, phase: MFloat[1]) -> MFloat[1]:
         var segment = 0
-        phase2 = phase * self.dur
+        var phase2 = phase * self.dur
         while segment < len(self._times) - 1 and phase2 >= self._times[segment + 1]:
             segment += 1
 
         # by the above logic, segment should never be able to be the last index of times or values 
-        out = lincurve(phase2, self._times[segment], self._times[segment + 1], self.params.values[segment], self.params.values[segment + 1], self.params.curves[segment % len(self.params.curves)])
+        var out = lincurve(phase2, self._times[segment], self._times[segment + 1], self.params.values[segment], self.params.values[segment + 1], self.params.curves[segment % len(self.params.curves)])
         return out
 
     def get_phase(self) -> Float64:
@@ -252,15 +253,15 @@ struct Env(Movable, Copyable):
         Returns:
             A SIMDBuffer containing `num_chans` of envelope values.
         """
-        env = Env(world)
-        buffer = SIMDBuffer[num_chans].zeros(size)
+        var env = Env(world)
+        var buffer = SIMDBuffer[num_chans].zeros(size)
         print(env_defs.__len__())
         for i in range(min(env_defs.__len__(), num_chans)):
             print(i)
             env.params = env_defs[i].copy()
             
             for j in range(size):
-                phase = Float64(j) / Float64(size - 1)
+                var phase = Float64(j) / Float64(size - 1)
                 buffer.data[j][i] = env.next[win_type, interp](True, phase)
         return buffer^
 
@@ -278,7 +279,7 @@ def win_read[window_type: WindowType = WindowType.sine, interp: Interp = Interp.
     Returns:
         The window value at the specified phase.
     """
-    val = world[].windows().at_phase[window_type=window_type, interp=interp](world, phase)
+    var val = world[].windows().at_phase[window_type=window_type, interp=interp](world, phase)
     return val
 
 def buf_read[num_chans: Int, interp: Interp = Interp.linear, bWrap: Bool = True](world: World, env_buffer: SIMDBuffer[num_chans], phase: MFloat[1], prev_phase: MFloat[1] = 0.0) -> MFloat[num_chans]:
@@ -299,10 +300,11 @@ def buf_read[num_chans: Int, interp: Interp = Interp.linear, bWrap: Bool = True]
         The envelope value at the specified phase.
     """
     comptime if interp == Interp.sinc:
-        val = env_buffer.at_phase[interp=interp,bWrap=bWrap](world, phase, prev_phase)
+        var val = env_buffer.at_phase[interp=interp,bWrap=bWrap](world, phase, prev_phase)
+        return val
     else:
-        val = env_buffer.at_phase[interp=interp,bWrap=bWrap](world, phase, 0.0)
-    return val
+        var val = env_buffer.at_phase[interp=interp,bWrap=bWrap](world, phase, 0.0)
+        return val
 
 # min_env is just a function, not a struct
 def min_env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none](world: World, phase: MFloat[1] = 0.0, ramp_amount: MFloat[1] = 0.01) -> MFloat[1]:
@@ -322,7 +324,8 @@ def min_env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none
     Returns:
         Envelope value at the current ramp position.
     """
-    r_a2 = clip(ramp_amount, 0.0, 0.5)
+    var r_a2 = clip(ramp_amount, 0.0, 0.5)
+    var env = 0.0
     if phase < r_a2:
         env = phase / r_a2
     elif phase > (1.0 - r_a2):
@@ -390,6 +393,7 @@ struct ASREnv(Movable, Copyable):
         self.is_active = self.sweep.phase > 0.0 or gate
         self.eoc = self.eoc_rbd.next(not self.is_active)
 
+        var ramp = 0.0
         if gate:
             ramp = lincurve(self.sweep.phase, 0.0, 1.0, 0.0, 1.0, curve[0])
         else:
@@ -457,9 +461,11 @@ struct Compressor[num_chans: Int, ov_samp: TimesOversampling = TimesOversampling
         """
 
         comptime if Self.ov_samp == TimesOversampling.none:
-            gain = self.next_neg_comp(input, threshold, ratio, attack, release, knee_width)
+            var gain = self.next_neg_comp(input, threshold, ratio, attack, release, knee_width)
             return input * gain
         else:
+            var x2 = MFloat[Self.num_chans](0.0)
+            var y = MFloat[Self.num_chans](0.0)
             comptime for i in range(Self.ov_samp.times):
                 # upsample the input
                 x2 = self.upsampler.next(input, i)
@@ -482,23 +488,23 @@ struct Compressor[num_chans: Int, ov_samp: TimesOversampling = TimesOversampling
             MFloat[1] negative compression gain in amplitude units, which can be multiplied with the original signal or used as a sidechain.
         """
 
-        ratio2 = max(ratio, 1.0)  # Ensure ratio is at least 1:1
+        var ratio2 = max(ratio, 1.0)  # Ensure ratio is at least 1:1
 
-        c1 = self.changed.next(attack)
-        c2 = self.changed2.next(release)
+        var c1 = self.changed.next(attack)
+        var c2 = self.changed2.next(release)
         if c1 or c2:
             self.lag.set_lag_times(release, attack) # backwards because gain reduction is 1 when there is no gain reduction so the attack goes down and the release goes up
 
-        amp = self.amp.next(input).reduce_add() / self.denom
-        amp_db = ampdb(max(amp, dbamp(-100.0))) 
-        val = amp_db - threshold
+        var amp = self.amp.next(input).reduce_add() / self.denom
+        var amp_db = ampdb(max(amp, dbamp(MFloat[1](-100.0)))) 
+        var val = amp_db - threshold
 
+        var gain_reduction = 0.0
         if val <= -knee_width / 2:
             gain_reduction = 0.0
         elif val >= knee_width / 2:
             gain_reduction = val * (1.0 / ratio2 - 1)
         else:
-            
             gain_reduction = (1.0 / ratio2 - 1) * (val + knee_width / 2) ** 2 / (2 * knee_width)
         self.sidechain = dbamp(self.lag.next(gain_reduction))
 

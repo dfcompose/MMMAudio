@@ -17,8 +17,8 @@ struct MLP[input_size: Int = 2, output_size: Int = 16](Copyable, Movable):
     var model: PythonObject  
     var MLP: PythonObject  
     var torch: PythonObject  
-    var model_input: InlineArray[Float64, Self.input_size]  
-    var model_output: InlineArray[Float64, Self.output_size]  
+    var model_input: Array[Float64, Self.input_size]  
+    var model_output: Array[Float64, Self.output_size]  
     var fake_model_output: List[Float64]
     var inference_trig: Phasor[1]
     var inference_gate: Bool
@@ -41,8 +41,8 @@ struct MLP[input_size: Int = 2, output_size: Int = 16](Copyable, Movable):
         self.model = PythonObject(None)  
         self.MLP = PythonObject(None)  
         self.torch = PythonObject(None) 
-        self.model_input = InlineArray[Float64, Self.input_size](fill=0.0)
-        self.model_output = InlineArray[Float64, Self.output_size](fill=0.0)
+        self.model_input = Array[Float64, Self.input_size](fill=0.0)
+        self.model_output = Array[Float64, Self.output_size](fill=0.0)
         self.fake_model_output = [0.0 for _ in range(Self.output_size)]    
         self.inference_trig = Phasor[1](world)
         self.inference_gate = True
@@ -63,7 +63,7 @@ struct MLP[input_size: Int = 2, output_size: Int = 16](Copyable, Movable):
 
         self.reload_model(file_name)
 
-    def reload_model(mut self: MLP, var file_name: String):
+    def reload_model(mut self, var file_name: String):
         """Reload the MLP model from a specified file.
 
         Args:
@@ -80,7 +80,7 @@ struct MLP[input_size: Int = 2, output_size: Int = 16](Copyable, Movable):
             self.inference_gate = False
 
     @always_inline
-    def next(mut self: MLP):
+    def next(mut self):
         """Function for Audio Thread.
 
         Call this function every sample in the audio thread. The MLP will only
@@ -92,7 +92,7 @@ struct MLP[input_size: Int = 2, output_size: Int = 16](Copyable, Movable):
         self.messenger.update("toggle_inference", self.inference_gate)
         
         if self.messenger.notify_update("load_mlp_training", self.file_name):
-            file_name = ""
+            var file_name = ""
             self.messenger.update("load_mlp_training", file_name)
             print("loading model from file: ", file_name)
             self.reload_model(file_name)

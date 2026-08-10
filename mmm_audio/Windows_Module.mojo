@@ -55,7 +55,7 @@ struct Windows(Movable, Copyable):
             Window values sampled at the requested phases.
         """
 
-        out = MFloat[num_chans](0.0)
+        var out = MFloat[num_chans](0.0)
 
         
         comptime if window_type == WindowType.hann:
@@ -351,7 +351,7 @@ def gaussian_window(size: Int) -> List[Float64]:
     var window = List[Float64]()
     for i in range(size):
         # bell curve with 4 standard deviations
-        a = (Float64(i) - (Float64(size)*0.5)) / (Float64(size)*0.125)
-        b = exp(-1*a*a)
+        var a = (Float64(i) - (Float64(size)*0.5)) / (Float64(size)*0.125)
+        var b = exp(-1*a*a)
         window.append(b)
     return window.copy()

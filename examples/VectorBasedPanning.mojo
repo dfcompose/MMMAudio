@@ -50,7 +50,7 @@ struct VectorBasedPanning(Movable, Copyable):
         # 4 speaker setup
         
         
-        comptime speakers : InlineArray[Float64, 4] = [
+        comptime speakers : Array[Float64, 4] = [
             deg_to_rad(-55),
             deg_to_rad(55),
             deg_to_rad(-110),
@@ -67,7 +67,7 @@ struct VectorBasedPanning(Movable, Copyable):
 
         #7 speaker setup
 
-        # comptime speakers : InlineArray[MFloat[2], 7] = [
+        # comptime speakers : Array[MFloat[2], 7] = [
         #     MFloat[2](-0.66, 1),
         #     MFloat[2](0.66, 1),
         #     MFloat[2](0, 1),
@@ -76,7 +76,7 @@ struct VectorBasedPanning(Movable, Copyable):
         #     MFloat[2](-0.66, -1),
         #     MFloat[2](0.66, -1)
         # ]
-        # comptime weights : InlineArray[Float64, 7] = [
+        # comptime weights : Array[Float64, 7] = [
         #     1,1,1,1,1,1,1
         # ]
 

@@ -47,7 +47,7 @@ struct Latch[num_chans: Int = 1](Copyable, Movable):
             The currently latched sample.
         """
         
-        rising_edge = self.rbd.next(trig)
+        var rising_edge = self.rbd.next(trig)
         self.samp = rising_edge.select(in_samp, self.samp)
         return self.samp
 
@@ -107,9 +107,9 @@ struct SoftClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
     def _next_norm(mut self, x: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
         """Transfer function: x - x^n/n"""
 
-        mask: MBool[Self.num_chans] = abs(x*self.norm_factor).gt(1.0)
+        var mask: MBool[Self.num_chans] = abs(x*self.norm_factor).gt(1.0)
 
-        out = ((x * self.norm_factor) - pow(x * self.norm_factor, self.D) / self.D) * self.inv_norm_factor
+        var out = ((x * self.norm_factor) - pow(x * self.norm_factor, self.D) / self.D) * self.inv_norm_factor
 
         out = mask.select(sign(x), out)
 
@@ -119,11 +119,11 @@ struct SoftClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
     @always_inline
     def _next_AD1(mut self, x: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
         """First antiderivative: x²/2 - x^(n+1) / (n*(n+1))"""
-        mask: MBool[Self.num_chans] = abs(x*self.norm_factor).gt(1.0)
+        var mask: MBool[Self.num_chans] = abs(x*self.norm_factor).gt(1.0)
 
-        outA = x * sign(x) + self.G1 - self.inv_norm_factor
+        var outA = x * sign(x) + self.G1 - self.inv_norm_factor
 
-        out = ((self.norm_factor * (x * x) / 2.0) - (pow(self.norm_factor, self.D) * pow(x, self.D + 1) / (self.D * (self.D + 1.0)))) * self.inv_norm_factor
+        var out = ((self.norm_factor * (x * x) / 2.0) - (pow(self.norm_factor, self.D) * pow(x, self.D + 1) / (self.D * (self.D + 1.0)))) * self.inv_norm_factor
 
         return mask.select(outA, out)
 
@@ -139,9 +139,9 @@ struct SoftClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
         Returns:
             The anti-aliased folded signal.
         """
-        mask = abs(x - self.x1).lt(self.TOL)
+        var mask = abs(x - self.x1).lt(self.TOL)
 
-        out = mask.select(self._next_norm((x + self.x1) * 0.5), (self._next_AD1(x) - self._next_AD1(self.x1)) / (x - self.x1))
+        var out = mask.select(self._next_norm((x + self.x1) * 0.5), (self._next_AD1(x) - self._next_AD1(self.x1)) / (x - self.x1))
         self.x1 = x
         return out
 
@@ -169,6 +169,8 @@ struct SoftClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
         comptime if Self.ov_samp == TimesOversampling.none:
             return self._next1(x)
         else:
+            var x2: MFloat[Self.num_chans]
+            var y: MFloat[Self.num_chans]
             comptime for i in range(Self.ov_samp.times):
                 # upsample the input
                 x2 = self.upsampler.next(x, i)
@@ -228,19 +230,19 @@ struct HardClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
     @doc_hidden
     @always_inline
     def _next_norm(mut self, x: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
-        mask: MBool[Self.num_chans] = abs(x).lt(1.0)
+        var mask: MBool[Self.num_chans] = abs(x).lt(1.0)
         return mask.select(x, sign(x))
 
     @doc_hidden
     @always_inline
     def _next_AD1(mut self, x: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
-        mask: MBool[Self.num_chans] = abs(x).lt(1.0)
+        var mask: MBool[Self.num_chans] = abs(x).lt(1.0)
         return mask.select(x * x * 0.5, x * sign(x) - 0.5)
 
     @doc_hidden
     @always_inline
     def _next_AD2(mut self, x: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
-        mask: MBool[Self.num_chans] = abs(x).lt(1.0)
+        var mask: MBool[Self.num_chans] = abs(x).lt(1.0)
 
         return mask.select(x * x * x / 6.0, ((x * x * 0.5) + (1.0 / 6.0)) * sign(x) - (x/2))
 
@@ -248,7 +250,7 @@ struct HardClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
     @always_inline
     def _calcD(mut self, x0: MFloat[Self.num_chans], x1: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
 
-        mask: MBool[Self.num_chans] = abs(x0 - x1).lt(self.TOL)
+        var mask: MBool[Self.num_chans] = abs(x0 - x1).lt(self.TOL)
 
         return mask.select(
             self._next_AD1((x0 + x1) * 0.5),
@@ -258,10 +260,10 @@ struct HardClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
     @doc_hidden
     @always_inline
     def _fallback(mut self, x0: MFloat[Self.num_chans], x2: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
-        x_bar = (x0 + x2) * 0.5
-        delta = x_bar - x0
+        var x_bar = (x0 + x2) * 0.5
+        var delta = x_bar - x0
 
-        mask: MBool[Self.num_chans] = abs(delta).lt(self.TOL)  # Changed to abs(delta)
+        var mask: MBool[Self.num_chans] = abs(delta).lt(self.TOL)  # Changed to abs(delta)
         return mask.select(
             self._next_norm((x_bar + x0) * 0.5),
             (2.0 / delta) * (self._next_AD1(x_bar) + (self._next_AD2(x0) - self._next_AD2(x_bar)) / delta)
@@ -270,8 +272,8 @@ struct HardClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
     @doc_hidden
     @always_inline
     def _next1(mut self, x: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
-        mask: MBool[Self.num_chans] = abs(x - self.x1).lt(self.TOL)
-        out = mask.select(self._next_norm((x + self.x1) * 0.5), (self._next_AD1(x) - self._next_AD1(self.x1)) / (x - self.x1))
+        var mask: MBool[Self.num_chans] = abs(x - self.x1).lt(self.TOL)
+        var out = mask.select(self._next_norm((x + self.x1) * 0.5), (self._next_AD1(x) - self._next_AD1(self.x1)) / (x - self.x1))
         self.x1 = x
         return out
 
@@ -294,6 +296,8 @@ struct HardClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
         comptime if Self.ov_samp == TimesOversampling.none:
             return self._next1(x)
         else:
+            var x2: MFloat[Self.num_chans]
+            var y: MFloat[Self.num_chans]
             comptime for i in range(Self.ov_samp.times):
                 # upsample the input
                 x2 = self.upsampler.next(x, i)
@@ -349,9 +353,9 @@ struct TanhAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling
         Returns:
             The anti-aliased `tanh` of `x`.
         """
-        mask: MBool[Self.num_chans] = abs(x - self. x1).lt(self.TOL)
+        var mask: MBool[Self.num_chans] = abs(x - self. x1).lt(self.TOL)
 
-        out = mask.select(self._next_norm((x + self.x1) * 0.5), (self._next_AD1(x) - self._next_AD1(self.x1)) / (x - self.x1))
+        var out = mask.select(self._next_norm((x + self.x1) * 0.5), (self._next_AD1(x) - self._next_AD1(self.x1)) / (x - self.x1))
         self.x1 = x
         return out
     
@@ -377,6 +381,8 @@ struct TanhAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling
         comptime if Self.ov_samp == TimesOversampling.none:
             return self._next1(x)
         else:
+            var x2: MFloat[Self.num_chans]
+            var y: MFloat[Self.num_chans]
             comptime for i in range(Self.ov_samp.times):
                 # upsample the input
                 x2 = self.upsampler.next(x, i)
@@ -420,7 +426,7 @@ def buchla_wavefolder[num_chans: Int](input: MFloat[num_chans], var amp: Float64
     var v5 = buchla_cell(sig, sig_sign, 4.08, 0.2673, 1.0907, 36.363)
     var v6 = sig * 5.0
     
-    out = (v1 + v2 + v3) + (v4 + v5 + v6)
+    var out = (v1 + v2 + v3) + (v4 + v5 + v6)
 
     # Scale output
     return tanh(out / amp)
@@ -444,7 +450,7 @@ struct BuchlaCell[num_chans: Int = 1](Copyable, Movable):
         self.Bpp = Self.one_sixth * G * (thresh*thresh*thresh) - 0.5 * B * (thresh*thresh) - thresh * self.Bp
 
     def func(self, x: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
-        mask: MBool[Self.num_chans] = abs(x).gt(self.thresh)
+        var mask: MBool[Self.num_chans] = abs(x).gt(self.thresh)
         return mask.select(self.G * x - self.B * sign(x), MFloat[Self.num_chans](0.0))
 
     def func_AD(self, x: MFloat[Self.num_chans]) -> MFloat[Self.num_chans]:
@@ -498,7 +504,7 @@ struct BuchlaWavefolder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOv
 
     @doc_hidden
     def _next_norm(self, x: MFloat[Self.num_chans], amp: Float64) -> MFloat[Self.num_chans]:
-        x2 = x * amp
+        var x2 = x * amp
         var y: MFloat[Self.num_chans] = Self.x_mix * x2
         for i in range(len(self.cells)):
             y += self.cells[i].mix * self.cells[i].func(x2)
@@ -506,7 +512,7 @@ struct BuchlaWavefolder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOv
 
     @doc_hidden
     def _next_AD1(self, x: MFloat[Self.num_chans], amp: Float64) -> MFloat[Self.num_chans]:
-        x2 = x * amp
+        var x2 = x * amp
         var y: MFloat[Self.num_chans] = 0.5 * Self.x_mix * (x2 * x2)
         for i in range(len(self.cells)):
             y += self.cells[i].mix * self.cells[i].func_AD(x2)
@@ -531,10 +537,10 @@ struct BuchlaWavefolder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOv
         Returns:
             The anti-aliased folded signal.
         """
-        safe_amp = max(amp, 1e-6)
+        var safe_amp = max(amp, 1e-6)
     
-        mask = abs(x - self.x1).lt(self.TOL)
-        out = mask.select(
+        var mask = abs(x - self.x1).lt(self.TOL)
+        var out = mask.select(
             self._next_norm((x + self.x1) * 0.5, safe_amp), 
             (self._next_AD1(x, safe_amp) - self._next_AD1(self.x1, safe_amp)) / (x - self.x1)
         )
@@ -557,6 +563,8 @@ struct BuchlaWavefolder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOv
         comptime if Self.ov_samp == TimesOversampling.none:
             return self._next1(x, amp)
         else:
+            var x2: MFloat[Self.num_chans]
+            var y: MFloat[Self.num_chans]
             comptime for i in range(Self.ov_samp.times):
                 # upsample the input
                 x2 = self.upsampler.next(x, i)

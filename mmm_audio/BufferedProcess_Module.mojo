@@ -6,7 +6,7 @@ from std.math import floor
 # can be retrieved
 # by the BufferedProcess struct. Mojo currently doesn't allow this traits to have
 # parameters. I think `hop_size` would still be a parameter of the BufferedProcess struct.
-trait BufferedProcessable(Movable, Copyable, ImplicitlyDestructible):
+trait BufferedProcessable(Movable, Copyable, Deinitable):
     """Trait that user structs must implement to be used with a BufferedProcess.
     
     Requires two functions:
@@ -132,7 +132,7 @@ struct BufferedProcess[T: BufferedProcessable, output: Bool = True, input_window
         comptime if not Self.output:
             return 0.0
 
-        outval = self.output_buffer[self.read_head]
+        var outval = self.output_buffer[self.read_head]
         self.output_buffer[self.read_head] = 0.0
 
         self.read_head = (self.read_head + 1) % self.window_size
@@ -175,7 +175,7 @@ struct BufferedProcess[T: BufferedProcessable, output: Bool = True, input_window
         comptime if not Self.output:
             return 0.0
 
-        outval = self.st_output_buffer[self.read_head]
+        var outval = self.st_output_buffer[self.read_head]
         self.st_output_buffer[self.read_head] = 0.0
 
         self.read_head = (self.read_head + 1) % self.window_size
@@ -204,6 +204,7 @@ struct BufferedProcess[T: BufferedProcessable, output: Bool = True, input_window
 
         if self.hop_counter == 0:
 
+            var index: Float64
             for i in range(self.window_size):
                 index = phase * buffer.num_frames_f64 + Float64(i) * buffer.sample_rate / self.world[].sample_rate
                 self.passing_buffer[i] = SpanInterpolator.read[interp=interp, bWrap=bWrap](self.world, buffer.data, index, 0.0) * self.input_attenuation_window[i]
@@ -222,7 +223,7 @@ struct BufferedProcess[T: BufferedProcessable, output: Bool = True, input_window
         if not Self.output:
             return 0.0
 
-        outval = self.output_buffer[self.read_head]
+        var outval = self.output_buffer[self.read_head]
         self.output_buffer[self.read_head] = 0.0
         
         self.read_head = (self.read_head + 1) % self.window_size
@@ -249,7 +250,7 @@ struct BufferedProcess[T: BufferedProcessable, output: Bool = True, input_window
         if self.hop_counter == 0:
            
             for i in range(self.window_size):
-                index = (phase * buffer.num_frames_f64) + Float64(i)
+                var index = (phase * buffer.num_frames_f64) + Float64(i)
                 self.st_passing_buffer[i] = SpanInterpolator.read[interp=interp, bWrap=bWrap](self.world, buffer.data, index, 0.0) * self.input_attenuation_window[i]
 
             self.process.next_stereo_window(self.st_passing_buffer)
@@ -265,7 +266,7 @@ struct BufferedProcess[T: BufferedProcessable, output: Bool = True, input_window
         if not Self.output:
             return 0.0
 
-        outval = self.st_output_buffer[self.read_head]
+        var outval = self.st_output_buffer[self.read_head]
         self.st_output_buffer[self.read_head] = 0.0
 
         self.read_head = (self.read_head + 1) % self.window_size

@@ -17,8 +17,8 @@ def wrap_to_pi[num_chans: Int](phase: MFloat[num_chans]) -> MFloat[num_chans]:
 @doc_hidden
 def phase_difference_bin[num_chans: Int](current_phase: MFloat[num_chans], previous_phase: MFloat[num_chans], 
                         bin_num: Int, window_size: Int, hop_size: Int) -> MFloat[num_chans]:
-    expected_shift = two_pi * Float64(bin_num * hop_size) / Float64(window_size)
-    delta_phase = current_phase - previous_phase - expected_shift
+    var expected_shift = two_pi * Float64(bin_num * hop_size) / Float64(window_size)
+    var delta_phase = current_phase - previous_phase - expected_shift
     
     return wrap_to_pi(delta_phase)
 
@@ -78,18 +78,18 @@ def get_best_coherence[num_chans: Int, num_iterations: Int, call_back: def (mut 
         hop_size: The hop size of the FFT, used to calculate the expected phase shift.
     """
 
-    phase_corr = MFloat[num_chans](-1.0)
+    var phase_corr = MFloat[num_chans](-1.0)
     call_back(phases)
     comptime if num_iterations > 0:
         comptime for i in range(num_iterations):
-            temp_phases = phases.copy()
+            var temp_phases = phases.copy()
             comptime if i > 0:
                 call_back(phases)
-            phase_corr_new = phase_coherence(phases, previous_phases, mags, previous_mags, window_size, hop_size)
+            var phase_corr_new = phase_coherence(phases, previous_phases, mags, previous_mags, window_size, hop_size)
 
-            lt0 = phase_corr_new.lt(0.0)
+            var lt0 = phase_corr_new.lt(0.0)
             phase_corr_new = abs(phase_corr_new)
-            gt_last = phase_corr_new.gt(phase_corr)
+            var gt_last = phase_corr_new.gt(phase_corr)
 
             # if the absolute value of the new coherence is higher than the last one, we want to keep it, but if the coherence is negative, we want to invert the phases
             # otherwise we want to keep the old phases. 
