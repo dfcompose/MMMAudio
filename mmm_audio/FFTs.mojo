@@ -1,4 +1,10 @@
-from mmm_audio import *
+from mmm_audio.constants import *
+from mmm_audio.functions import *
+from mmm_audio.Buffer_Module import Buffer
+from mmm_audio.MMMWorld_Module import WindowType
+from mmm_audio.FFTProcess_Module import FFTProcessable
+from mmm_audio.Analysis import GetFloat64Featurable
+from mmm_audio.MBufAnalysisBridge import MBufAnalysis
 from std.complex import *
 import std.math as Math
 from std.random import random_float64
@@ -13,7 +19,7 @@ def log2_int(n: Int) -> Int:
         result += 1
     return result
 
-struct RealFFT[num_chans: Int = 1](Copyable, Movable):
+struct RealFFT[num_chans: SIMDLength = 1](Copyable, Movable):
     """Real-valued FFT implementation using Cooley-Tukey algorithm.
 
     If you're looking to create an FFT-based FX, look to the [FFTProcessable](FFTProcess.md/#trait-fftprocessable)
@@ -355,7 +361,7 @@ struct FFTAnalysis(FFTProcessable, GetFloat64Featurable):
             features[nmags + i] = self.phss[i]
         return features^
 
-from mmm_audio import *
+from mmm_audio.constants import *
 from std.complex import *
 from std.random import random_float64
 

@@ -1,4 +1,6 @@
-from mmm_audio import *
+from mmm_audio.MMMWorld_Module import MMMWorld
+from mmm_audio.Messenger_Module import Messenger
+from std.math import pi
 
 comptime MFloat[N: SIMDLength = 1] = SIMD[DType.float64, N]
 comptime MInt[N: SIMDLength = 1] = SIMD[DType.int, N]

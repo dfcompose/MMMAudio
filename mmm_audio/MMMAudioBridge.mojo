@@ -6,8 +6,10 @@ from std.python.bindings import PythonModuleBuilder
 
 from std.os import abort
 from std.memory import *
+from std.memory.alloc import unsafe_alloc
 
-from mmm_audio import *
+from mmm_audio.constants import *
+from mmm_audio.MMMWorld_Module import MMMWorld, Environment
 from examples.Grains import Grains
 
 # this is needed to make the module importable in Python - so simple!
@@ -60,11 +62,11 @@ struct MMMAudioBridge(Movable, Writable):
     def __init__(out self, sample_rate: Float64 = 44100.0, block_size: Int = 512, num_in_chans: Int = 12, num_out_chans: Int = 12):
         """Initialize the audio engine with sample rate, block size, and number of channels."""
 
-        self.environment_ptr = alloc[Environment](1)
-        self.environment_ptr.init_pointee_move(Environment(block_size, num_in_chans, num_out_chans))
+        self.environment_ptr = unsafe_alloc[Environment](1)
+        self.environment_ptr.unsafe_write(Environment(block_size, num_in_chans, num_out_chans))
 
-        self.world = alloc[MMMWorld](1) 
-        self.world.init_pointee_move(MMMWorld(sample_rate, self.environment_ptr))
+        self.world = unsafe_alloc[MMMWorld](1) 
+        self.world.unsafe_write(MMMWorld(sample_rate, self.environment_ptr))
 
         self.graph = Grains(self.world)
 

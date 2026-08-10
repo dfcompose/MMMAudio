@@ -1,9 +1,10 @@
 from std.math import sqrt, floor, cos, pi, sin
 from std.sys import simd_width_of
 from std.algorithm import vectorize
-from mmm_audio import *
-
-
+from mmm_audio.constants import *
+from mmm_audio.functions import *
+from mmm_audio.MMMWorld_Module import Interp
+from std.bit import next_power_of_two
 
 @always_inline
 def pan2(sample: Float64, pan: Float64) -> MFloat[2]:
@@ -42,23 +43,20 @@ def pan_stereo(samples: MFloat[2], pan: Float64) -> MFloat[2]:
     return samples_out  # Return stereo output as List
 
 @always_inline
-def splay[num_simd: Int](*input: MFloat[num_simd], world: World) -> MFloat[2]:
+def splay(*input: MFloat[_], world: World) -> MFloat[2]:
     """
     Splay multiple input channels into stereo output.
 
     There are multiple versions of splay to handle different input types. It can take a List or Array of SIMD vectors, a VariadicList of SIMD, or a single 1 or many channel SIMD vector. In the case of a list of SIMD vectors, each channel within the vector is treated separately and panned individually.
 
-    Parameters:
-        num_simd: Number of channels in each SIMD input.
-
     Args:
         input: VariadicList of input samples from multiple channels.
-        world: Pointer to MMMWorld containing the pan_window.
+        world: Pointer to MMMWorld containing the pan_window. world is a keyword argument that needs to be explicitly assign (`world=world`) when calling splay().
 
     Returns:
         Stereo output as MFloat[2].
     """
-    var num_input_channels = len(input) * num_simd
+    var num_input_channels = len(input) * input[0].length
     var out = MFloat[2](0.0)
 
     var pan: Float64
@@ -71,15 +69,15 @@ def splay[num_simd: Int](*input: MFloat[num_simd], world: World) -> MFloat[2]:
         else:
             pan = Float64(i) / Float64(num_input_channels - 1)
 
-            index0 = i // num_simd
-            index1 = i % num_simd
+            index0 = i // input[0].length
+            index1 = i % input[0].length
             ref temp = world[].windows()
             pan_mul = temp.at_pan[interp=Interp.none](world, pan)
             out += input[index0][index1] * pan_mul
     return out
 
 @always_inline
-def splay[num_simd: Int](input: Span[MFloat[num_simd], ...], world: World) -> MFloat[2]:
+def splay[num_simd: SIMDLength](input: Span[MFloat[num_simd], _], world: World) -> MFloat[2]:
     """
     Splay multiple input channels into stereo output.
 
@@ -168,7 +166,7 @@ def make_mul_list[num_speakers: Int, simd_out_size: Int, pan_points: Int]() -> A
             mul_list[i][j] = cos(d[j] * pi_over_2)
     return mul_list^
 
-def splay_n[simd_in_width: Int, num_speakers: Int, simd_out_size: Int, pan_points: Int](input: Span[MFloat[simd_in_width], ...], world: World) -> MFloat[simd_out_size]:
+def splay_n[simd_in_width: SIMDLength, num_speakers: Int, simd_out_size: SIMDLength, pan_points: Int](input: Span[MFloat[simd_in_width], ...], world: World) -> MFloat[simd_out_size]:
     """Splay multiple input channels into an arbitrary number of output channels.
 
     Parameters:

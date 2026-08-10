@@ -1,10 +1,11 @@
 from std.math import sin, floor
-from mmm_audio import *
-from .Oversampling import *
-from .constants import *
-from .BooleanTests import RisingBoolDetector
+from mmm_audio.Oversampling import *
+from mmm_audio.Buffer_Module import *
+from mmm_audio.constants import *
+from mmm_audio.BooleanTests import RisingBoolDetector
+from mmm_audio.MMMWorld_Module import Interp, WindowType, OscType
 
-struct Phasor[num_chans: Int = 1](Movable, Copyable):
+struct Phasor[num_chans: SIMDLength = 1](Movable, Copyable):
     """Phasor Oscillator.
 
     An oscillator that generates a ramp waveform from 0.0 to 1.0. The phasor is the root of all oscillators in MMMAudio.
@@ -110,7 +111,7 @@ struct Phasor[num_chans: Int = 1](Movable, Copyable):
         return (tick | rbd).cast[DType.float64]()
 
 
-struct Impulse[num_chans: Int = 1](Movable, Copyable):
+struct Impulse[num_chans: SIMDLength = 1](Movable, Copyable):
     """Impulse Oscillator.
 
     An oscillator that outputs a 1.0 or True for one sample when the phase wraps around from 1.0 to 0.0.
@@ -159,7 +160,7 @@ struct Impulse[num_chans: Int = 1](Movable, Copyable):
         return self.phasor.next_impulse(freq, phase_offset, trig) 
 
 
-struct Osc[num_chans: Int = 1, interp: Interp = Interp.linear, ov_samp: TimesOversampling = TimesOversampling.none](Movable, Copyable):
+struct Osc[num_chans: SIMDLength = 1, interp: Interp = Interp.linear, ov_samp: TimesOversampling = TimesOversampling.none](Movable, Copyable):
     """Wavetable Oscillator Core.
 
     A wavetable oscillator capable of all standard waveforms and also able to load custom wavetables. Capable of linear, cubic, quadratic, lagrange, or sinc interpolation. Also capable of using an internal [Downsampler](Downsampler.md).
@@ -442,7 +443,7 @@ struct Osc[num_chans: Int = 1, interp: Interp = Interp.linear, ov_samp: TimesOve
             return self.downsampler.value().get_sample()
 
     @always_inline
-    def next_vwt[simd_chans: Int](
+    def next_vwt[simd_chans: SIMDLength](
             mut self, 
             ref buffer: SIMDBuffer[simd_chans], 
             freq: MFloat[self.num_chans] = MFloat[self.num_chans](100.0), 
@@ -542,7 +543,7 @@ struct OscBank[num: Int](Movable, Copyable):
             out += self.oscs[i].next[osc_type=osc_type](self.freqs[i])
         return out.reduce_add() / Float64(Self.num) 
 
-struct LFOsc[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.none] (Movable, Copyable):
+struct LFOsc[num_chans: SIMDLength = 1, ov_samp: TimesOversampling = TimesOversampling.none] (Movable, Copyable):
     """A low-frequency oscillator with multiple waveform options.
     
     This oscillator generates a non-bandlimited oscillator capable of saw, triangle, and square waves. It is useful for modulation, but should be avoided for audio-rate synthesis due to aliasing.
@@ -661,7 +662,7 @@ struct LFOsc[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.
             The next sample of the oscillator output."""
         return self.next[OscType.square](freq, phase_offset, trig)
 
-struct Dust[num_chans: Int = 1] (Movable, Copyable):
+struct Dust[num_chans: SIMDLength = 1] (Movable, Copyable):
     """A dust noise oscillator that generates random impulses at random intervals.
     
     Dust has a Phasor as its core, and the frequency of the Phasor is randomly changed each time an impulse is generated. This allows the Dust to be used in multiple ways. It can be used as a simple random impulse generator, or the user can use the get_phase() method to get the current phase of the internal Phasor and use that phase to drive other oscillators or processes. The user can also set the phase of the internal Phasor using the set_phase() method, allowing for more complex interactions.
@@ -714,7 +715,7 @@ struct Dust[num_chans: Int = 1] (Movable, Copyable):
 
         comptime for i in range(self.num_chans):
             if tick[i]:
-                self.freq[i] = random_float64(low[i], high[i])
+                self.freq[i] = rrand(low[i], high[i])
 
         return tick
 
@@ -767,7 +768,7 @@ struct TTrig(Movable, Copyable):
             self.counter = Int(time * self.world[].sample_rate)
         return self.next(False, 0)
 
-struct LFNoise[num_chans: Int = 1, interp: Interp = Interp.cubic](Movable, Copyable):
+struct LFNoise[num_chans: SIMDLength = 1, interp: Interp = Interp.cubic](Movable, Copyable):
     """Low-frequency interpolating noise generator generating numbers between -1.0 and 1.0. With stepped (none), linear, or cubic interpolation.
 
     Parameters:
@@ -795,7 +796,7 @@ struct LFNoise[num_chans: Int = 1, interp: Interp = Interp.cubic](Movable, Copya
         self.history = [MFloat[Self.num_chans](0.0) for _ in range(5)]
         for i in range(Self.num_chans):
             for j in range(len(self.history)):
-                self.history[j][i] = random_float64(0.1, 1.0)
+                self.history[j][i] = rrand(0.1, 1.0)
         # Initialize history with random values
 
     @always_inline
@@ -819,7 +820,7 @@ struct LFNoise[num_chans: Int = 1, interp: Interp = Interp.cubic](Movable, Copya
             # so don't change that one, cubic interp needs to know that, so we'll change 
             # history_index - 2 (but, again, computed differently to avoid negative indices) so
             # the next time we wrap around to that part of the history list it will be a new random value
-            self.history[(self.history_index[i] + (len(self.history) - 2)) % len(self.history)][i] = random_float64(-1.0, 1.0)
+            self.history[(self.history_index[i] + (len(self.history) - 2)) % len(self.history)][i] = rrand(-1.0, 1.0)
 
         comptime if Self.interp == Interp.none:
             var p0 = MFloat[self.num_chans](0.0)
@@ -847,7 +848,7 @@ struct LFNoise[num_chans: Int = 1, interp: Interp = Interp.cubic](Movable, Copya
             # Cubic interpolation
             return cubic_interp(p0, p1, p2, p3, self.impulse.phase)
 
-struct Sweep[num_chans: Int = 1](Movable, Copyable):
+struct Sweep[num_chans: SIMDLength = 1](Movable, Copyable):
     """A phase accumulator.
     
     Phase accumulator that sweeps from 0 up to inf at a given frequency, resetting on trigger.
@@ -892,7 +893,7 @@ struct Sweep[num_chans: Int = 1](Movable, Copyable):
 
         return self.phase
 
-struct Line[num_chans: Int = 1](Movable, Copyable):
+struct Line[num_chans: SIMDLength = 1](Movable, Copyable):
     """
         A Line between start and end that takes dur seconds to complete. Line has 3 modes: linear, exponential, and curve. The standard .next function is linear, .exp is exponential, and .curve uses lincurve to warp the output.
     """

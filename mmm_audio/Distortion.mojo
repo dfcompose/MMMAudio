@@ -1,7 +1,14 @@
-from mmm_audio import *
+from mmm_audio.Oversampling import Downsampler, Upsampler
+from mmm_audio.Polyphony import PolyReset
+from mmm_audio.constants import *
+from mmm_audio.BooleanTests import RisingBoolDetector
+from mmm_audio.MMMWorld_Module import TimesOversampling
 from std.math import tanh, floor, pi, exp, log, cosh
+from mmm_audio.MMMWorld_Module import Interp
+from mmm_audio.functions import all_lanes_equal, clip, sign
 
-def bitcrusher[num_chans: Int](in_samp: MFloat[num_chans], bits: Int) -> MFloat[num_chans]:
+
+def bitcrusher[num_chans: SIMDLength](in_samp: MFloat[num_chans], bits: Int) -> MFloat[num_chans]:
     """Simple bitcrusher function that reduces the bit depth of the input signal.
     
     Parameters:
@@ -20,7 +27,7 @@ def bitcrusher[num_chans: Int](in_samp: MFloat[num_chans], bits: Int) -> MFloat[
     return out_samp
 
 
-struct Latch[num_chans: Int = 1](Copyable, Movable):
+struct Latch[num_chans: SIMDLength = 1](Copyable, Movable):
     """
     A simple latch that holds the last input sample when a trigger is received.
 
@@ -55,21 +62,21 @@ struct Latch[num_chans: Int = 1](Copyable, Movable):
 
 # the trait currently doesn't work, but it will once parameters are included in traits
 
-# trait ADAAfuncs[num_chans: Int = 1](Movable, Copyable):
+# trait ADAAfuncs[num_chans: SIMDLength = 1](Movable, Copyable):
 
-#     def next_norm[num_chans: Int](mut self, input: MFloat[num_chans]) -> MFloat[num_chans]:
+#     def next_norm[num_chans: SIMDLength](mut self, input: MFloat[num_chans]) -> MFloat[num_chans]:
 #         ...
 
-#     def next_AD1[num_chans: Int](mut self, input: MFloat[num_chans]) -> MFloat[num_chans]:
+#     def next_AD1[num_chans: SIMDLength](mut self, input: MFloat[num_chans]) -> MFloat[num_chans]:
 #         ...
     
-#     def next_AD2[num_chans: Int](mut self, input: MFloat[num_chans]) -> MFloat[num_chans]:
+#     def next_AD2[num_chans: SIMDLength](mut self, input: MFloat[num_chans]) -> MFloat[num_chans]:
 #         ...
 
 # [TODO] implement 2nd order ADAA versions of hard clip, soft clip, tanh
 # [TODO] implement a parameter in the .next functions to choose between none, and 1st and 2nd order ADAA
 
-struct SoftClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.none, degree: Int = 3](Copyable, Movable):
+struct SoftClipAD[num_chans: SIMDLength = 1, ov_samp: TimesOversampling = TimesOversampling.none, degree: Int = 3](Copyable, Movable):
     """
     Anti-Derivative Anti-aliasing soft-clipping function.
     
@@ -178,7 +185,7 @@ struct SoftClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
                 self.downsampler.add_sample(y)
             return self.downsampler.get_sample()
 
-def soft_clip[num_chans: Int](x: MFloat[num_chans], min_val: MFloat[num_chans] = -1., max_val: MFloat[num_chans] = 1.) -> MFloat[num_chans]:
+def soft_clip[num_chans: SIMDLength](x: MFloat[num_chans], min_val: MFloat[num_chans] = -1., max_val: MFloat[num_chans] = 1.) -> MFloat[num_chans]:
     """Apply a SuperCollider-style soft clip across a custom range.
 
     Parameters:
@@ -198,7 +205,7 @@ def soft_clip[num_chans: Int](x: MFloat[num_chans], min_val: MFloat[num_chans] =
     var clipped = normalized / (1.0 + abs(normalized))
     return center + clipped * range
 
-struct HardClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.none](Copyable, Movable):
+struct HardClipAD[num_chans: SIMDLength = 1, ov_samp: TimesOversampling = TimesOversampling.none](Copyable, Movable):
     """
     Anti-Derivative Anti-aliasing hard-clipping function.
     
@@ -305,7 +312,7 @@ struct HardClipAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversamp
                 self.downsampler.add_sample(y)
             return self.downsampler.get_sample()
 
-struct TanhAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.none](Copyable, Movable, PolyReset):
+struct TanhAD[num_chans: SIMDLength = 1, ov_samp: TimesOversampling = TimesOversampling.none](Copyable, Movable, PolyReset):
     """Anti-Derivative Anti-aliasing first order tanh function.
     
     This struct provides a first order anti-aliased version of the `tanh` function using the Anti-Derivative Anti-aliasing (ADAA) method with optional Downsampler. See [Practical Considerations for Antiderivative Anti-aliasing (Chowdhury)](https://ccrma.stanford.edu/~jatin/Notebooks/adaa.html) for more details on how this works.
@@ -391,14 +398,14 @@ struct TanhAD[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling
             return self.downsampler.get_sample()
 
 @doc_hidden
-def buchla_cell[num_chans: Int](sig: MFloat[num_chans], sign: MFloat[num_chans], thresh: MFloat[num_chans], 
+def buchla_cell[num_chans: SIMDLength](sig: MFloat[num_chans], sign: MFloat[num_chans], thresh: MFloat[num_chans], 
                sig_mul1: MFloat[num_chans], sign_mul: MFloat[num_chans], sig_mul2: MFloat[num_chans]) -> MFloat[num_chans]:
     """Implements the Buchla cell function."""
     var mask: MBool[num_chans] = abs(sig).gt(thresh)
 
     return mask.select((sig * sig_mul1 - (sign * sign_mul)) * sig_mul2, 0.0)
 
-def buchla_wavefolder[num_chans: Int](input: MFloat[num_chans], var amp: Float64) -> MFloat[num_chans]:
+def buchla_wavefolder[num_chans: SIMDLength](input: MFloat[num_chans], var amp: Float64) -> MFloat[num_chans]:
     """Buchla waveshaper.
 
     Buchla waveshaper implementation as a function. Derived from Virual Analog Buchla 259e Wavefolderby Esqueda, etc. See the BuchlaWavefolder struct for an ADAA version with oversampling.
@@ -432,7 +439,7 @@ def buchla_wavefolder[num_chans: Int](input: MFloat[num_chans], var amp: Float64
     return tanh(out / amp)
 
 @doc_hidden
-struct BuchlaCell[num_chans: Int = 1](Copyable, Movable):
+struct BuchlaCell[num_chans: SIMDLength = 1](Copyable, Movable):
     var G: Float64       # folder cell "gain"
     var B: Float64       # folder cell "bias"
     var thresh: Float64  # folder cell "threshold"
@@ -466,7 +473,7 @@ struct BuchlaCell[num_chans: Int = 1](Copyable, Movable):
     #                 - self.Bpp * sgn)
     #     return 0.0
 
-struct BuchlaWavefolder[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.x2](Copyable, Movable):
+struct BuchlaWavefolder[num_chans: SIMDLength = 1, ov_samp: TimesOversampling = TimesOversampling.x2](Copyable, Movable):
     """Buchla 259 style Wavefolder.
     
     Buchla 259 style wavefolder implementation with Anti-Derivative Anti-aliasing (ADAA) and Downsampler. Derived from Virual Analog Buchla 259e Wavefolderby Esqueda, etc. The ADAA technique is based on [Practical Considerations for Antiderivative Anti-aliasing (Chowdhury)](https://ccrma.stanford.edu/~jatin/Notebooks/adaa.html).

@@ -1,4 +1,4 @@
-from mmm_audio import *
+from mmm_audio.constants import *
 from std.collections import Dict, Set
 
 struct Messenger(Copyable, Movable):
@@ -190,7 +190,7 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating float list message. Error: ", error)
         return False
 
-    def update[dtype: DType, num_chans: Int](mut self, name: String, mut param: SIMD[dtype, num_chans]):
+    def update[dtype: DType, num_chans: SIMDLength](mut self, name: String, mut param: SIMD[dtype, num_chans]):
         """Update a SIMD[DType.float64] variable with a value sent from Python.
 
         Parameters:
@@ -211,7 +211,7 @@ struct Messenger(Copyable, Movable):
             except error:
                 print("Error occurred while updating float SIMD message. Error: ", error)
 
-    def notify_update[dtype: DType, num_chans: Int](mut self, name: String, mut param: SIMD[dtype, num_chans]) -> Bool:
+    def notify_update[dtype: DType, num_chans: SIMDLength](mut self, name: String, mut param: SIMD[dtype, num_chans]) -> Bool:
         """Notify and update a SIMD[DType.float64] variable with a value sent from Python.
 
         Parameters:

@@ -1,5 +1,7 @@
-from mmm_audio import *
-from .constants import *
+from mmm_audio.constants import *
+from mmm_audio.MMMWorld_Module import Interp
+from mmm_audio.Windows_Module import kaiser_window
+from mmm_audio.functions import *
 from std.sys import simd_width_of
 from std.math import floor, log2, sin
 
@@ -57,7 +59,7 @@ struct SincInterpolator[ripples: Int = 4, power: Int = 14](Movable, Copyable):
 
     @doc_hidden
     @always_inline  
-    def spaced_sinc[num_chans: Int, bWrap: Bool = False, mask: Int = 0](self, data: Span[MFloat[num_chans], ...], index: Int, frac: Float64, spacing: Int) -> MFloat[num_chans]:
+    def spaced_sinc[num_chans: SIMDLength, bWrap: Bool = False, mask: Int = 0](self, data: Span[MFloat[num_chans], _], index: Int, frac: Float64, spacing: Int) -> MFloat[num_chans]:
         """Read using spaced sinc interpolation. This is a helper function for read_sinc."""
         var sinc_mult = self.max_sinc_offset // spacing
         var loop_count = Self.ripples * 2
@@ -101,7 +103,7 @@ struct SincInterpolator[ripples: Int = 4, power: Int = 14](Movable, Copyable):
         return out
 
     @always_inline
-    def sinc_interp[num_chans: Int, bWrap: Bool = True, mask: Int = 0](self, data: Span[MFloat[num_chans], ...], current_index: Float64, prev_index: Float64) -> MFloat[num_chans]:
+    def sinc_interp[num_chans: SIMDLength, bWrap: Bool = True, mask: Int = 0](self, data: Span[MFloat[num_chans], _], current_index: Float64, prev_index: Float64) -> MFloat[num_chans]:
         """Perform sinc interpolation on the given data at the specified current index.
         
         Parameters:

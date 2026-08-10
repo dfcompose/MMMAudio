@@ -3,9 +3,16 @@
 This module provides an envelope generator class that can create complex envelopes with multiple segments, curves, and looping capabilities.
 """
 
-from mmm_audio import *
+from mmm_audio.MMMWorld_Module import *
+from mmm_audio.Oscillators import Sweep
+from mmm_audio.BooleanTests import RisingBoolDetector, Changed
+from mmm_audio.Buffer_Module import SIMDBuffer, Buffer
+from mmm_audio.Oversampling import *
+from mmm_audio.Filters import *
+from mmm_audio.constants import *
+from mmm_audio.functions import *
 
-def env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none](world: World, x: Float64, points: Span[Tuple[Float64, Float64], MutUntrackedOrigin, address_space = AddressSpace.GENERIC], curve: Float64 = 1.0) -> Float64:
+def env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none](world: World, x: Float64, points: Span[Tuple[Float64, Float64], _], curve: Float64 = 1.0) -> Float64:
     """Creates an envelope by linearly mapping an input value `x` based on a series of input-output points. This is just a function, so it should be paired with a Line or Phasor UGen to create an envelope generator.
 
     The function takes a variable number of (input, output) pairs and linearly maps the input `x` to the corresponding output value based on which segment of the input range `x` falls into. If `x` is outside the range of the provided points, it will be clamped to the nearest segment.
@@ -185,7 +192,7 @@ struct Env(Movable, Copyable):
             else:
                 return self.params.values[len(self.params.values) - 1]  # Return the last value if not looping
 
-        env = self._apply_phase(phase)
+        var env = self._apply_phase(phase)
         comptime if win_type != WindowType.none:
             env *= win_read[win_type, interp](self.world, env*0.5)
         
@@ -210,7 +217,7 @@ struct Env(Movable, Copyable):
         if phase >= 1.0:
             return self.params.values[self.params.values.__len__() - 1]
             
-        env = self._apply_phase(phase)
+        var env = self._apply_phase(phase)
 
         comptime if win_type != WindowType.none:
             env *= win_read[win_type, interp](self.world, env*0.5)
@@ -237,7 +244,7 @@ struct Env(Movable, Copyable):
         return clip(self.sweep.phase, 0.0, 1.0)
 
     @staticmethod
-    def get_env_buffer[num_chans: Int = 1, win_type: WindowType = WindowType.none, interp: Interp = Interp.linear](world: World, size: Int, *env_defs: EnvParams) -> SIMDBuffer[num_chans]:
+    def get_env_buffer[num_chans: SIMDLength = 1, win_type: WindowType = WindowType.none, interp: Interp = Interp.linear](world: World, size: Int, *env_defs: EnvParams) -> SIMDBuffer[num_chans]:
         """Get a SIMDBuffer of envelope values.
 
         Parameters:
@@ -282,7 +289,7 @@ def win_read[window_type: WindowType = WindowType.sine, interp: Interp = Interp.
     var val = world[].windows().at_phase[window_type=window_type, interp=interp](world, phase)
     return val
 
-def buf_read[num_chans: Int, interp: Interp = Interp.linear, bWrap: Bool = True](world: World, env_buffer: SIMDBuffer[num_chans], phase: MFloat[1], prev_phase: MFloat[1] = 0.0) -> MFloat[num_chans]:
+def buf_read[num_chans: SIMDLength, interp: Interp = Interp.linear, bWrap: Bool = True](world: World, env_buffer: SIMDBuffer[num_chans], phase: MFloat[1], prev_phase: MFloat[1] = 0.0) -> MFloat[num_chans]:
     """Reads a buffer by indexing into it with the provided phase.
 
     Parameters:
@@ -325,7 +332,7 @@ def min_env[win_type: WindowType = WindowType.none, interp: Interp = Interp.none
         Envelope value at the current ramp position.
     """
     var r_a2 = clip(ramp_amount, 0.0, 0.5)
-    var env = 0.0
+    var env: MFloat[1]
     if phase < r_a2:
         env = phase / r_a2
     elif phase > (1.0 - r_a2):
@@ -393,7 +400,7 @@ struct ASREnv(Movable, Copyable):
         self.is_active = self.sweep.phase > 0.0 or gate
         self.eoc = self.eoc_rbd.next(not self.is_active)
 
-        var ramp = 0.0
+        var ramp: MFloat[1]
         if gate:
             ramp = lincurve(self.sweep.phase, 0.0, 1.0, 0.0, 1.0, curve[0])
         else:
@@ -404,7 +411,7 @@ struct ASREnv(Movable, Copyable):
 
         return ramp * sustain
 
-struct Compressor[num_chans: Int, ov_samp: TimesOversampling = TimesOversampling.none](Movable, Copyable):
+struct Compressor[num_chans: SIMDLength, ov_samp: TimesOversampling = TimesOversampling.none](Movable, Copyable):
     """Compressor from Nathan Ho's [Negative Compression web post](https://nathan.ho.name/posts/negative-compression/).
     
     Params:
@@ -464,8 +471,8 @@ struct Compressor[num_chans: Int, ov_samp: TimesOversampling = TimesOversampling
             var gain = self.next_neg_comp(input, threshold, ratio, attack, release, knee_width)
             return input * gain
         else:
-            var x2 = MFloat[Self.num_chans](0.0)
-            var y = MFloat[Self.num_chans](0.0)
+            var x2: MFloat[Self.num_chans]
+            var y: MFloat[Self.num_chans]
             comptime for i in range(Self.ov_samp.times):
                 # upsample the input
                 x2 = self.upsampler.next(input, i)
@@ -499,7 +506,7 @@ struct Compressor[num_chans: Int, ov_samp: TimesOversampling = TimesOversampling
         var amp_db = ampdb(max(amp, dbamp(MFloat[1](-100.0)))) 
         var val = amp_db - threshold
 
-        var gain_reduction = 0.0
+        var gain_reduction: Float64
         if val <= -knee_width / 2:
             gain_reduction = 0.0
         elif val >= knee_width / 2:

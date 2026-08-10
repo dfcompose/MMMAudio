@@ -585,7 +585,7 @@ def write_wav_file(file_name: String, samples: Span[mut=False, List[Float64], Mu
     with open(file_name, "w") as f:
         f.write_bytes(data)
 
-def write_wav_file[num_channels: Int](file_name: String, samples: Span[mut=False, MFloat[num_channels], ...], sample_rate: Int = 44100) raises:
+def write_wav_file[num_channels: SIMDLength](file_name: String, samples: Span[mut=False, MFloat[num_channels], ...], sample_rate: Int = 44100) raises:
     """Write audio samples to a WAV file.
 
     Parameters:

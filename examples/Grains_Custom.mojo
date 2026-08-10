@@ -54,7 +54,7 @@ struct GrainBPF(GrainObject):
     def get_env_trigger(self) -> Bool:
         return self.grain.get_env_trigger()
 
-    def set_user_defined_env(mut self, env_points: Span[Tuple[Float64, Float64], ...]):
+    def set_user_defined_env(mut self, env_points: Span[Tuple[Float64, Float64], _]):
         self.grain.set_user_defined_env(env_points)
 
     def set_vals(mut self, 
@@ -142,6 +142,6 @@ struct Grains_Custom(Movable, Copyable):
         var grain_num = self.tgrains.trig(impulse)
         if grain_num >= 0:
             self.tgrains.grains[grain_num].set_vals(1, start_frame, 0.1, random_float64(-1.0, 1.0), 1.0, 0, exprand(200., 8000.), rrand(5.0, 10.0))
-        out = self.tgrains.next_2[2](self.buffer, 1.0)
+        var out = self.tgrains.next_2[2](self.buffer, 1.0)
 
         return MFloat[2](out[0], out[1])

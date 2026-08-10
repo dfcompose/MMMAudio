@@ -1,7 +1,9 @@
-from mmm_audio import *
+from mmm_audio.constants import *
+from mmm_audio.Oscillators import *
+from mmm_audio.MMMWorld_Module import Interp, WindowType
 
 struct PAF[
-    num_chans: Int = 1,
+    num_chans: SIMDLength = 1,
     interp: Interp = Interp.linear,
     ov_samp: TimesOversampling = TimesOversampling.none,
     wrap_gaussian: Bool = False,

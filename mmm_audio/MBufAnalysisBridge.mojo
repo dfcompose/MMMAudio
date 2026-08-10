@@ -3,7 +3,13 @@ from std.python import Python
 from std.python import ConvertibleFromPython
 from std.python.bindings import PythonModuleBuilder
 from std.os import abort
-from mmm_audio import *
+from mmm_audio.constants import *
+from mmm_audio.Buffer_Module import Buffer, SpanInterpolator
+from mmm_audio.Analysis import *
+from mmm_audio.OnsetDetection_Module import OnsetDetection, OnsetMetric, OnsetDetectionFeature
+from mmm_audio.MMMWorld_Module import MMMWorld, Environment
+from mmm_audio.Windows_Module import Windows, WindowType
+from std.memory.alloc import unsafe_alloc
 
 @export
 def PyInit_MBufAnalysisBridge() abi("C") -> PythonObject:
@@ -406,11 +412,12 @@ struct MBufAnalysisBridge:
         var hop_size = get_at_key[Int]("onset_detection", py_dict, "hop_size", window_size // 2)
         var filter_size = get_at_key[Int]("onset_detection", py_dict, "filter_size", 5)
         var frame_delta = get_at_key[Int]("onset_detection", py_dict, "frame_delta", 0)
+        
 
-        var w = alloc[MMMWorld](1)
-        var environment = alloc[Environment](1)
-        environment.init_pointee_move(Environment(64, 2, 2))
-        w.init_pointee_move(MMMWorld(ap.buf.sample_rate, environment))
+        var w = unsafe_alloc[MMMWorld](1)
+        var environment = unsafe_alloc[Environment](1)
+        environment.unsafe_write(Environment(64, 2, 2))
+        w.unsafe_write(MMMWorld(ap.buf.sample_rate, environment))
 
         var result = OnsetDetection.buf_analysis(
             w,

@@ -1,5 +1,7 @@
-from mmm_audio import *
+from mmm_audio.constants import *
 from std.math import exp, sin, sqrt, cos, pi
+from mmm_audio.MMMWorld_Module import Interp, WindowType
+from mmm_audio.Buffer_Module import SpanInterpolator
 
 struct Windows(Movable, Copyable):
     """Stores various window functions used in audio processing. This struct precomputes several common window types."""
@@ -38,11 +40,10 @@ struct Windows(Movable, Copyable):
         """
         return SpanInterpolator.read[2,interp,True,self.mask](world,self.pan2, pan * 255.0, 0.0)
 
-    def at_phase[num_chans: Int, window_type: WindowType, interp: Interp = Interp.none](self, world: World, phase: MFloat[num_chans], prev_phase: MFloat[num_chans] = 0.0) -> MFloat[num_chans]:
+    def at_phase[window_type: WindowType, interp: Interp = Interp.none](self, world: World, phase: MFloat[_], prev_phase: type_of(phase) = 0.0) -> type_of(phase):
         """Get a window value at the given normalized phase.
 
         Parameters:
-            num_chans: Size of the SIMD vector.
             window_type: Window type to sample.
             interp: Interpolation mode used when reading the window table.
 
@@ -55,26 +56,26 @@ struct Windows(Movable, Copyable):
             Window values sampled at the requested phases.
         """
 
-        var out = MFloat[num_chans](0.0)
+        var out = MFloat[phase.length](0.0)
 
         
         comptime if window_type == WindowType.hann:
-            comptime for chan in range(num_chans):
+            comptime for chan in range(phase.length):
                 out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.hann, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.hamming:
-            comptime for chan in range(num_chans):
+            comptime for chan in range(phase.length):
                 out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.hamming, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.blackman:
-            comptime for chan in range(num_chans):
+            comptime for chan in range(phase.length):
                 out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.blackman, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.kaiser:
-            comptime for chan in range(num_chans):
+            comptime for chan in range(phase.length):
                 out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.kaiser, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.sine:
-            comptime for chan in range(num_chans):
+            comptime for chan in range(phase.length):
                 out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.sine, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.gaussian:
-            comptime for chan in range(num_chans):
+            comptime for chan in range(phase.length):
                 out[chan] = SpanInterpolator.read[1,interp,True,self.mask](world,self.gaussian, phase[chan] * self.size_f64, prev_phase[chan] * self.size_f64)
         elif window_type == WindowType.rect:
             out = 1.0 

@@ -26,6 +26,6 @@ struct TestSplay(Movable, Copyable):
         for i in range(num_osc):
              self.samples[i] = self.osc[i].next(self.freqs[i])
 
-        sample2 = splay_n[num_speakers = num_output_channels, simd_out_size = simd_out_size, pan_points = 100](self.samples, self.world)
+        var sample2 = splay_n[num_speakers = num_output_channels, simd_out_size = simd_out_size, pan_points = 100](self.samples, self.world)
         # sample2 = splay(self.samples, self.world)
         return sample2 * self.mult

@@ -1,6 +1,8 @@
 from std.python import PythonObject
 from std.python import Python
-from mmm_audio import *
+from mmm_audio.constants import *
+from mmm_audio.functions import py_to_float64
+from mmm_audio.Oscillators import Phasor
 
 struct MLP[input_size: Int = 2, output_size: Int = 16](Copyable, Movable): 
     """A Mojo wrapper for a PyTorch MLP model using Python interop.
@@ -115,9 +117,9 @@ struct MLP[input_size: Int = 2, output_size: Int = 16](Copyable, Movable):
                 print("Error processing input through MLP")
 
             try:
-                py_output = self.model(self.py_input)  # Run the model with the input
+                var py_output = self.model(self.py_input)  # Run the model with the input
                 comptime for i in range(Self.output_size):
                     var py_val = py_output[0][i].item()
-                    self.model_output[i] = py_to_float64(py_val)
+                    self.model_output[i] = Float64(py=py_val)
             except Exception:
                 print("Error processing input through MLP:")

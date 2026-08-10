@@ -1,6 +1,8 @@
-from mmm_audio import * 
+from mmm_audio.constants import *
+from mmm_audio.functions import *
+from std.math import sin, cos, atan2, sqrt, pow
 
-def wrap_to_pi[num_chans: Int](phase: MFloat[num_chans]) -> MFloat[num_chans]:
+def wrap_to_pi[num_chans: SIMDLength](phase: MFloat[num_chans]) -> MFloat[num_chans]:
     """Wrap the input phase to the range [-pi, pi].
 
     Parameters:
@@ -15,18 +17,18 @@ def wrap_to_pi[num_chans: Int](phase: MFloat[num_chans]) -> MFloat[num_chans]:
     return atan2(sin(phase), cos(phase))
     
 @doc_hidden
-def phase_difference_bin[num_chans: Int](current_phase: MFloat[num_chans], previous_phase: MFloat[num_chans], 
+def phase_difference_bin[num_chans: SIMDLength](current_phase: MFloat[num_chans], previous_phase: MFloat[num_chans], 
                         bin_num: Int, window_size: Int, hop_size: Int) -> MFloat[num_chans]:
     var expected_shift = two_pi * Float64(bin_num * hop_size) / Float64(window_size)
     var delta_phase = current_phase - previous_phase - expected_shift
     
     return wrap_to_pi(delta_phase)
 
-def phase_coherence[num_chans: Int](
-    current_phases: Span[MFloat[num_chans], ...], 
-    previous_phases: Span[MFloat[num_chans], ...], 
-    current_mags: Span[MFloat[num_chans], ...],
-    previous_mags: Span[MFloat[num_chans], ...],
+def phase_coherence[num_chans: SIMDLength](
+    current_phases: Span[MFloat[num_chans], _], 
+    previous_phases: Span[MFloat[num_chans], _], 
+    current_mags: Span[MFloat[num_chans], _],
+    previous_mags: Span[MFloat[num_chans], _],
     window_size: Int,
     hop_size: Int, 
 ) -> MFloat[num_chans]:
@@ -61,7 +63,7 @@ def phase_coherence[num_chans: Int](
     
     return sum_cos / (weight_sum + 1e-9)
 
-def get_best_coherence[num_chans: Int, num_iterations: Int, call_back: def (mut phases: List[MFloat[num_chans]]) capturing -> None](mut mags: List[MFloat[num_chans]], mut phases: List[MFloat[num_chans]], mut previous_mags: List[MFloat[num_chans]], mut previous_phases: List[MFloat[num_chans]], window_size: Int, hop_size: Int):
+def get_best_coherence[num_chans: SIMDLength, num_iterations: Int, call_back: def (mut phases: List[MFloat[num_chans]]) capturing -> None](mut mags: List[MFloat[num_chans]], mut phases: List[MFloat[num_chans]], mut previous_mags: List[MFloat[num_chans]], mut previous_phases: List[MFloat[num_chans]], window_size: Int, hop_size: Int):
     """Calls a callback function `num_iterations` times, and keeps the mag/phase set with the best coherence to the previous phases. There are two versions of this function, one that allows the callback to modify both mags and phases, and one that only allows the callback to modify just the phases.
     
     Parameters:

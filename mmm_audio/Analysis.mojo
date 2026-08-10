@@ -1,5 +1,13 @@
-from mmm_audio import *
+
 from std.math import atan2, ceil, floor, log2, log, exp, sin, sqrt, cos, pi, inf
+from .Buffer_Module import Buffer
+from .BufferedProcess_Module import BufferedProcessable
+from .FFTs import RealFFT
+from .FFTProcess_Module import FFTProcessable
+from .MBufAnalysisBridge import MBufAnalysis, Padding
+from .functions import *
+from .constants import *
+from .MMMWorld_Module import WindowType
 
 @always_inline
 @doc_hidden
@@ -1299,7 +1307,7 @@ struct MelBands(FFTProcessable, GetFloat64Featurable):
         return hz^
 
     @staticmethod
-    def hz_to_mel[num_chans: Int = 1](freq: SIMD[DType.float64,num_chans]) -> SIMD[DType.float64,num_chans]:
+    def hz_to_mel[num_chans: SIMDLength = 1](freq: SIMD[DType.float64,num_chans]) -> SIMD[DType.float64,num_chans]:
         """Convert Hz to Mels.
 
         This implementation is based on Librosa's eponymous [function](https://librosa.org/doc/main/generated/librosa.hz_to_mel.html). For more information on mel frequencies space see the [MelBands](Analysis.md/#struct-melbands) documentation.
@@ -1334,7 +1342,7 @@ struct MelBands(FFTProcessable, GetFloat64Featurable):
         return mels
 
     @staticmethod
-    def mel_to_hz[num_chans: Int = 1](mel: SIMD[DType.float64,num_chans]) -> SIMD[DType.float64,num_chans]:
+    def mel_to_hz[num_chans: SIMDLength = 1](mel: SIMD[DType.float64,num_chans]) -> SIMD[DType.float64,num_chans]:
         """Convert mel bin numbers to frequencies.
 
         This implementation is based on Librosa's eponymous [function](https://librosa.org/doc/main/generated/librosa.mel_to_hz.html). For more information on mel frequencies space see the [MelBands](Analysis.md/#struct-melbands) documentation.

@@ -50,13 +50,13 @@ struct Grains(Movable, Copyable):
             var grain_num = self.tgrains.trig(impulse)
             if grain_num >= 0:
                 self.tgrains.grains[grain_num].set_vals(1, start_frame, 0.4, random_float64(-1.0, 1.0), 1.0, 0)
-            out = self.tgrains.next_2[2](self.buffer)
+            var out = self.tgrains.next_2[2](self.buffer)
 
             return MFloat[num_simd_chans](out[0], out[1])
         else:
             var grain_num = self.tgrains.trig(impulse)
             if grain_num >= 0:
                 self.tgrains.grains[grain_num].set_vals(1, start_frame, 0.4, random_float64(-1.0, 1.0), 1.0, 0)
-            out2 = self.tgrains.next_multi_channel[num_speakers=num_speakers, num_simd_chans=num_simd_chans](self.buffer, 0, 1.0)
+            var out2 = self.tgrains.next_multi_channel[num_speakers=num_speakers, num_simd_chans=num_simd_chans](self.buffer, 0, 1.0)
 
             return out2

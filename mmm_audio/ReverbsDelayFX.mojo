@@ -1,6 +1,11 @@
-from mmm_audio import *
+from mmm_audio.constants import *
+from mmm_audio.functions import *
+from mmm_audio.Delays import *
+from mmm_audio.Filters import *
+from mmm_audio.Oscillators import *
+from std.math import sqrt
 
-struct Freeverb[num_chans: Int = 1](Movable, Copyable):
+struct Freeverb[num_chans: SIMDLength = 1](Movable, Copyable):
     """
     A custom implementation of the Freeverb reverb algorithm. Based on Romain Michon's Faust implementation (https://github.com/grame-cncm/faustlibraries/blob/master/reverbs.lib), thus is licensed under LGPL.
 
@@ -239,7 +244,7 @@ struct DattorroReverb[interp: Interp = Interp.none](Movable, Copyable):
 
         return MFloat[2](L, R)
 
-struct Phaser[num_chans: Int = 1, stages: Int = 8](Movable, Copyable):
+struct Phaser[num_chans: SIMDLength = 1, stages: Int = 8](Movable, Copyable):
     """A phaser effect implemented as a series of allpass filters, with the center frequencies modulated by an LFO.
     
     Parameters:
@@ -289,7 +294,7 @@ struct Phaser[num_chans: Int = 1, stages: Int = 8](Movable, Copyable):
         return (allpass_out * wet_dry[0]) + (input * wet_dry[1])
 
 
-struct Flanger[num_chans: Int = 1, interp: Interp = Interp.lagrange4](Movable, Copyable):
+struct Flanger[num_chans: SIMDLength = 1, interp: Interp = Interp.lagrange4](Movable, Copyable):
     """A flanger effect implemented as a single comb filter with the delay time modulated by an LFO.
 
     Parameters:

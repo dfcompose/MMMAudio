@@ -1,12 +1,12 @@
 from std.python import PythonObject
 import std.time
 from std.collections import Set
-from mmm_audio import *
-from .Oscillators import OscBuffers
-from .Windows_Module import Windows
-from .Messenger_Module import MessengerManager
-from .SincInterpolator_Module import SincInterpolator
-from .constants import World
+from mmm_audio.Oscillators import OscBuffers
+from mmm_audio.Windows_Module import Windows
+from mmm_audio.Messenger_Module import MessengerManager
+from mmm_audio.SincInterpolator_Module import SincInterpolator
+from mmm_audio.constants import World
+from std.memory.alloc import unsafe_alloc
 
 struct Environment(Movable, Copyable):
     var block_size: Int
@@ -231,8 +231,8 @@ struct MMMWorld(Movable, Copyable):
         Returns:
             A pointer to the newly created MMMWorld struct.
         """
-        var new_world = alloc[MMMWorld](1) 
-        new_world.init_pointee_move(MMMWorld(
+        var new_world = unsafe_alloc[MMMWorld](1) 
+        new_world.unsafe_write(MMMWorld(
             sample_rate=self.sample_rate * Float64(times_ov_samp.times), 
             environment_ptr = self.environment_ptr
         ))

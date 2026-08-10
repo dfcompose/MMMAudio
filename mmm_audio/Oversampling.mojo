@@ -1,8 +1,10 @@
 
-from mmm_audio import *
-from .Polyphony import PolyReset
+from mmm_audio.Polyphony import PolyReset
+from mmm_audio.constants import *
+from mmm_audio.MMMWorld_Module import TimesOversampling
+from std.math import pi, sin, cos
 
-struct Downsampler[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.none](Movable, Copyable, PolyReset):
+struct Downsampler[num_chans: SIMDLength = 1, ov_samp: TimesOversampling = TimesOversampling.none](Movable, Copyable, PolyReset):
     """A struct that collects `times_oversampling` samples and then downsamples them using a low-pass filter. Add a sample for each oversampling iteration with `add_sample()`, then get the downsampled output with `get_sample()`. VERY IMPORTANT, when initializing this struct, use the main world, not the oversampled subworld. The Downsampler exists outside of the oversampled subworld!
 
     Parameters:
@@ -57,7 +59,7 @@ struct Downsampler[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversam
         self.lpf.reset()
         self.counter = 0
         
-struct Upsampler[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampling.x2](Movable, Copyable, PolyReset):
+struct Upsampler[num_chans: SIMDLength = 1, ov_samp: TimesOversampling = TimesOversampling.x2](Movable, Copyable, PolyReset):
     """A struct that upsamples the input signal by the specified factor using a low-pass filter.
 
     Parameters:
@@ -95,7 +97,7 @@ struct Upsampler[num_chans: Int = 1, ov_samp: TimesOversampling = TimesOversampl
         """Reset the internal state of the upsampler."""
         self.lpf.reset()
 
-struct OS_LPF[num_chans: Int = 1](Movable, Copyable):
+struct OS_LPF[num_chans: SIMDLength = 1](Movable, Copyable):
     """A simple 2nd-order low-pass filter for oversampling applications. Does not allow changing cutoff frequency on the fly to avoid that calculation each sample.
     
     Parameters:
@@ -186,7 +188,7 @@ struct OS_LPF[num_chans: Int = 1](Movable, Copyable):
         self.z1 = MFloat[Self.num_chans](0.0)
         self.z2 = MFloat[Self.num_chans](0.0)
 
-struct OS_LPF4[num_chans: Int = 1](Movable, Copyable):
+struct OS_LPF4[num_chans: SIMDLength = 1](Movable, Copyable):
     """A 4th-order low-pass filter for oversampling applications, implemented as two cascaded 2nd-order sections.
     
     Parameters:

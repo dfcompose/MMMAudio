@@ -1,17 +1,24 @@
-from mmm_audio import *
+from mmm_audio.MMMWorld_Module import Interp
+from mmm_audio.Polyphony import PolyReset
+from mmm_audio.functions import all_lanes_equal, clip
+from mmm_audio.constants import *
+from mmm_audio.MMMWorld_Module import TimesOversampling
+from mmm_audio.Recorder_Module import Recorder
+from mmm_audio.Filters import OnePole, DCTrap
+from mmm_audio.Distortion import SoftClipAD, TanhAD
 from std.math import tanh
-from std.math import log
+from std.math import log, exp
 from std.bit import next_power_of_two
 
 # would be great - but in order for this to mean something we need params in structs or 
 trait Tapable(Movable, Copyable):
   ...
-#     def tap[num_chans: Int](mut self, delay_samps: MInt[num_chans]) -> MFloat[num_chans]:
+#     def tap[num_chans: SIMDLength](mut self, delay_samps: MInt[num_chans]) -> MFloat[num_chans]:
 #       ...
-#     def tap[num_chans: Int](mut self, delay_time: MFloat[num_chans]) -> MFloat[num_chans]:
+#     def tap[num_chans: SIMDLength](mut self, delay_time: MFloat[num_chans]) -> MFloat[num_chans]:
 #       ...
 
-struct Delay[num_chans: Int = 1, interp: Interp = Interp.linear](Tapable, PolyReset):
+struct Delay[num_chans: SIMDLength = 1, interp: Interp = Interp.linear](Tapable, PolyReset):
     """A variable delay line with interpolation.
 
     Parameters:
@@ -210,7 +217,7 @@ struct Delay[num_chans: Int = 1, interp: Interp = Interp.linear](Tapable, PolyRe
 
 
 
-def calc_feedback[num_chans: Int = 1](delaytime: MFloat[num_chans], decaytime: MFloat[num_chans]) -> MFloat[num_chans]:
+def calc_feedback[num_chans: SIMDLength = 1](delaytime: MFloat[num_chans], decaytime: MFloat[num_chans]) -> MFloat[num_chans]:
       """Calculate the feedback coefficient for a Comb filter or Allpass line based on desired delay time and decay time.
       
       Parameters:
@@ -233,7 +240,7 @@ def calc_feedback[num_chans: Int = 1](delaytime: MFloat[num_chans], decaytime: M
 
       return zero.select(MFloat[num_chans](0.0), dec_pos.select(absret, -absret))
 
-struct Comb[num_chans: Int = 1, interp: Interp = Interp.quad](Tapable, PolyReset):
+struct Comb[num_chans: SIMDLength = 1, interp: Interp = Interp.quad](Tapable, PolyReset):
     """
     A simple comb filter using a delay line with feedback.
 
@@ -315,7 +322,7 @@ struct Comb[num_chans: Int = 1, interp: Interp = Interp.quad](Tapable, PolyReset
         var feedback = calc_feedback(delay_time, decay_time)
         return self.next(input, delay_time, feedback)
 
-struct LP_Comb[num_chans: Int = 1, interp: Interp = Interp.linear](Tapable, PolyReset):
+struct LP_Comb[num_chans: SIMDLength = 1, interp: Interp = Interp.linear](Tapable, PolyReset):
     """
     A simple comb filter with an integrated one-pole low-pass filter.
     
@@ -389,7 +396,7 @@ struct LP_Comb[num_chans: Int = 1, interp: Interp = Interp.linear](Tapable, Poly
       self.one_pole.reset()
       self.fb = MFloat[Self.num_chans](0.0)
 
-struct Allpass[num_chans: Int = 1, interp: Interp = Interp.linear](Tapable, PolyReset):
+struct Allpass[num_chans: SIMDLength = 1, interp: Interp = Interp.linear](Tapable, PolyReset):
     """
     A simple allpass filter using a delay line with feedback.
     
@@ -490,7 +497,7 @@ struct Allpass[num_chans: Int = 1, interp: Interp = Interp.linear](Tapable, Poly
         self.delay.reset()
         
 
-struct FB_Delay[num_chans: Int = 1, interp: Interp = Interp.lagrange4, ADAA_dist: Bool = False, ov_samp: TimesOversampling = TimesOversampling.none](Tapable, PolyReset):
+struct FB_Delay[num_chans: SIMDLength = 1, interp: Interp = Interp.lagrange4, ADAA_dist: Bool = False, ov_samp: TimesOversampling = TimesOversampling.none](Tapable, PolyReset):
     """A feedback delay structured like a Comb filter, but with possible feedback coefficient above 1 due to an integrated tanh function.
     
     By default, Anti-aliasing is disabled and no oversampling is applied, but this can be changed by setting the ADAA_dist and ov_samp template parameters.

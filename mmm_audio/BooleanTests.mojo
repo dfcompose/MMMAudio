@@ -1,6 +1,6 @@
-from mmm_audio import *
+from mmm_audio.constants import *
 
-struct RisingBoolDetector[num_chans: Int = 1](Movable, Copyable):
+struct RisingBoolDetector[num_chans: SIMDLength = 1](Movable, Copyable):
     """A simple rising edge detector for boolean triggers. Outputs a boolean True trigger when the input transitions from False to True.
     
     Parameters:
@@ -26,7 +26,7 @@ struct RisingBoolDetector[num_chans: Int = 1](Movable, Copyable):
         self.state = trig
         return rising
 
-struct ToggleBool[num_chans: Int = 1](Movable, Copyable):
+struct ToggleBool[num_chans: SIMDLength = 1](Movable, Copyable):
     """A rising edge detector for boolean triggers.
     
     Parameters:
@@ -89,7 +89,7 @@ struct Changed[T: Equatable & ImplicitlyCopyable & Deinitable](Movable, Copyable
             return True
         return False
 
-struct ChangedSIMD[type: DType, size: Int,//](Movable, Copyable):
+struct ChangedSIMD[type: DType, size: SIMDLength,//](Movable, Copyable):
     """Detect element-wise changes in a SIMD vector value.
     
     Parameters:

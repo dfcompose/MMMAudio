@@ -1,6 +1,9 @@
-from mmm_audio import *
+from std.math import log2, floor, pi
+from mmm_audio.constants import *
+from mmm_audio.functions import *
+from mmm_audio.BooleanTests import RisingBoolDetector
 
-struct WhiteNoise[num_chans: Int = 1](Copyable, Movable):
+struct WhiteNoise[num_chans: SIMDLength = 1](Copyable, Movable):
     """Generate white noise samples.
     
     Parameters:
@@ -22,7 +25,7 @@ struct WhiteNoise[num_chans: Int = 1](Copyable, Movable):
         # Generate random value between -1 and 1, then scale by gain
         return rrand(MFloat[Self.num_chans](-1.0), MFloat[Self.num_chans](1.0)) * gain
 
-struct PinkNoise[num_chans: Int = 1](Copyable, Movable):
+struct PinkNoise[num_chans: SIMDLength = 1](Copyable, Movable):
     """Generate pink noise samples.
 
     Uses the [Voss-McCartney algorithm](https://www.firstpr.com.au/dsp/pink-noise/#Voss-McCartney).
@@ -75,7 +78,7 @@ struct PinkNoise[num_chans: Int = 1](Copyable, Movable):
         # Scale and return the result
         return pink * (gain * 0.125)
 
-struct BrownNoise[num_chans: Int = 1](Copyable, Movable):
+struct BrownNoise[num_chans: SIMDLength = 1](Copyable, Movable):
     """Generate brown noise samples.
 
     Parameters:
@@ -104,7 +107,7 @@ struct BrownNoise[num_chans: Int = 1](Copyable, Movable):
         self.last_output += (white - self.last_output) * 0.02
         return self.last_output * gain
 
-struct TExpRand[num_chans: Int = 1](Copyable, Movable):
+struct TExpRand[num_chans: SIMDLength = 1](Copyable, Movable):
     """Generate exponentially distributed random value upon receiving a trigger.
 
     Parameters:
@@ -149,7 +152,7 @@ struct TExpRand[num_chans: Int = 1](Copyable, Movable):
         self.last_trig = trig
         return self.stored_output
 
-struct TRand[num_chans: Int = 1](Copyable, Movable):
+struct TRand[num_chans: SIMDLength = 1](Copyable, Movable):
      """Generate uniformly distributed random value upon receiving a trigger.
 
     Parameters:
@@ -194,7 +197,7 @@ struct TRand[num_chans: Int = 1](Copyable, Movable):
         self.last_trig = trig
         return self.stored_output
 
-struct LFSRNoise[num_chans: Int = 1](Copyable, Movable):
+struct LFSRNoise[num_chans: SIMDLength = 1](Copyable, Movable):
     """Generate noise using a Linear Feedback Shift Register (LFSR).
 
     Based on [Josiah Sytsma's LFSR implementation](https://www.mjsyts.com/development/lfsr-noise-part-3).

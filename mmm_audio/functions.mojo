@@ -1,4 +1,9 @@
-from mmm_audio import *
+from mmm_audio.constants import *
+from std.math import pow, log10, log, log2, abs, isnan, log1p, floor
+from std.python import PythonObject
+from std.os import abort
+from std.pathlib import Path
+from std.random import random_float64
 
 def mprint[*Ts: Writable](world: World, *values: *Ts, n_blocks: UInt16 = 10, sep: StringSlice[ImmStaticOrigin] = " ", end: StringSlice[ImmStaticOrigin] = "\n") -> None:
     """Prints the provided arguments to the console.
@@ -60,7 +65,7 @@ def power_to_db(value: Float64, zero_db_ref: Float64 = 1.0, amin: Float64 = 1e-1
     return 10.0 * log10(max(value, amin) / zero_db_ref)
 
 @always_inline
-def select[num_chans: Int](index: Float64, vals: Span[MFloat[num_chans], ...]) -> MFloat[num_chans]:
+def select[num_chans: SIMDLength](index: Float64, vals: Span[MFloat[num_chans], _]) -> MFloat[num_chans]:
     """Selects a value from a Span of SIMD vectors based on a floating-point index using linear interpolation.
 
     Parameters:
@@ -156,12 +161,12 @@ def linlin[
     return clip(result, out_min2, out_max2)
 
 @always_inline
-def expexp[num_chans: Int, //](
-    input: MFloat[num_chans], 
-    in_min: MFloat[num_chans], 
-    in_max: MFloat[num_chans], 
-    out_min: MFloat[num_chans], 
-    out_max: MFloat[num_chans]) -> MFloat[num_chans]:
+def expexp(
+    input: MFloat[_], 
+    in_min: type_of(input), 
+    in_max: type_of(input), 
+    out_min: type_of(input), 
+    out_max: type_of(input)) -> type_of(input):
     """
     Exponential-to-exponential transform.
     
@@ -322,10 +327,9 @@ def linmap(x: MFloat[_], *points: Tuple[type_of(x), type_of(x)]) -> type_of(x):
     if x >= points[length-1][0]:
         return points[length-1][1]
     # Find the segment that x falls into
-    var x0, y0, x1, y1 = points[0][0], points[0][1], points[1][0], points[1][1]
     for i in range(length - 1):
-        x0, y0 = points[i]
-        x1, y1 = points[i + 1]
+        var x0, y0 = points[i]
+        var x1, y1 = points[i + 1]
         if x0 <= x <= x1:
             # Perform linear interpolation
             return y0 + (y1 - y0) * ((x - x0) / (x1 - x0))
@@ -575,8 +579,8 @@ def midicps(midi_note_number: MFloat[_], reference_midi_note: Float64 = 69, refe
     Returns:
         Frequency in Hz.
     """
-    
-    var frequency = Float64(reference_frequency) * 2.0 ** ((midi_note_number - reference_midi_note) / 12.0)
+    var exponent = (midi_note_number - reference_midi_note) / 12.0
+    var frequency = Float64(reference_frequency) * pow(MFloat[midi_note_number.length](2.0), exponent)
     return frequency
 
 
@@ -880,11 +884,11 @@ def find_quadratic_peak(p1: Float64, p2: Float64, p3: Float64) -> Tuple[Float64,
     
     return (vertex_x, vertex_y)
 
-def all_lanes_equal[dtype: DType, width: Int](v: SIMD[dtype, width]) -> Bool:
+def all_lanes_equal[dtype: DType, width: SIMDLength](v: SIMD[dtype, width]) -> Bool:
     return (v.eq(v[0])).reduce_and()
 
 @doc_hidden
-def horner[num_chans: Int, coeffs: Span[Float64, ...]](z: MFloat[num_chans]) -> MFloat[num_chans]:
+def horner[num_chans: SIMDLength, coeffs: Span[Float64, ...]](z: MFloat[num_chans]) -> MFloat[num_chans]:
     """Evaluate polynomial using Horner's method."""
     var result: MFloat[num_chans] = 0.0
     for i in range(len(coeffs) - 1, -1, -1):
@@ -892,7 +896,7 @@ def horner[num_chans: Int, coeffs: Span[Float64, ...]](z: MFloat[num_chans]) -> 
     return result
 
 @doc_hidden
-def Li2[num_chans: Int](x: MFloat[num_chans]) -> MFloat[num_chans]:
+def Li2[num_chans: SIMDLength](x: MFloat[num_chans]) -> MFloat[num_chans]:
     """Compute the dilogarithm (Spence's function) Li2(x) for SIMD vectors."""
 
     # Coefficients for double precision
