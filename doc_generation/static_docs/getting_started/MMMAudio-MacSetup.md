@@ -48,7 +48,6 @@ In the root MMMAudio directory, type:
 ```
 uv venv --python 3.14
 uv sync
-uv add mojo --prerelease allow
 ```
 
 This 1) creates the virtual environment, 2) sync the dependencies, 3) installs the correct pre-release version of Mojo.
@@ -63,7 +62,7 @@ From the MMMAudio directory:
 python -m venv venv 
 source venv/bin/activate
 
-pip install numpy scipy librosa pyautogui torch supriya-midi python-osc matplotlib PySide6 mojo==1.0.0b2 hidapi pyaudio
+pip install numpy scipy librosa pyautogui torch supriya-midi python-osc matplotlib PySide6 mojo==1.0.0 hidapi pyaudio
 ```
 
 ## 3 Edit the .vscode/settings.json file to have the following:
