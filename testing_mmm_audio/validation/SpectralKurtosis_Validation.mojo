@@ -5,11 +5,11 @@ comptime hopsize: Int = 512
 
 def main() raises:
 
-    buffer = Buffer.load("resources/Shiverer.wav")
+    var buffer = Buffer.load("resources/Shiverer.wav")
 
-    results = SpectralKurtosis.buf_analysis(buffer, chan=0, start_frame=0, num_frames=None, window_size=windowsize, hop_size=hopsize, padding=Padding.half_window)
+    var results = SpectralKurtosis.buf_analysis(buffer, chan=0, start_frame=0, num_frames=None, window_size=windowsize, hop_size=hopsize, padding=Padding.half_window)
 
-    pth = "testing_mmm_audio/validation/mojo_results/spectral_kurtosis_mojo_results.csv"
+    var pth = "testing_mmm_audio/validation/mojo_results/spectral_kurtosis_mojo_results.csv"
     try:
         with open(pth, "w") as f:
             f.write("windowsize," + String(windowsize) + "\n")

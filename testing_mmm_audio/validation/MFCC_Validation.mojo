@@ -9,8 +9,8 @@ comptime max_freq: Float64 = 20000.0
 
 def main() raises:
    
-    buf = Buffer.load("resources/Shiverer.wav")
-    result = MFCC.buf_analysis(buf, chan=0, start_frame=0, num_frames=None, num_coeffs=num_coeffs, num_bands=num_bands, min_freq=min_freq, max_freq=max_freq, window_size=fftsize, hop_size=hopsize, padding=Padding.half_window)
+    var buf = Buffer.load("resources/Shiverer.wav")
+    var result = MFCC.buf_analysis(buf, chan=0, start_frame=0, num_frames=None, num_coeffs=num_coeffs, num_bands=num_bands, min_freq=min_freq, max_freq=max_freq, window_size=fftsize, hop_size=hopsize, padding=Padding.half_window)
     with open("testing_mmm_audio/validation/mojo_results/mfcc_mojo_results.csv", "w") as f:
         f.write("windowsize," + String(fftsize) + "\n")
         f.write("hopsize," + String(hopsize) + "\n")

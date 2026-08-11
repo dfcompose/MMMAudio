@@ -17,9 +17,9 @@ comptime n_chroma: Int = 12
 # 		self.data.append(self.chroma.chroma.copy())
 
 def main() raises:
-	buf = Buffer.load("resources/Shiverer.wav")
+	var buf = Buffer.load("resources/Shiverer.wav")
 
-	results = Chroma.buf_analysis(buf, chan=0, start_frame=0, num_frames=None, n_chroma=n_chroma, tuning=0.0, norm=inf[DType.float64](), power=2.0, ctroct=5.0, octwidth=2.0, base_c=True, fft_size=fftsize, hop_size=hopsize, padding=Padding.half_window)
+	var results = Chroma.buf_analysis(buf, chan=0, start_frame=0, num_frames=None, n_chroma=n_chroma, tuning=0.0, norm=inf[DType.float64](), power=2.0, ctroct=5.0, octwidth=2.0, base_c=True, fft_size=fftsize, hop_size=hopsize, padding=Padding.half_window)
 
 	with open("testing_mmm_audio/validation/mojo_results/chroma_mojo_results.csv", "w") as f:
 		f.write("windowsize," + String(fftsize) + "\n")

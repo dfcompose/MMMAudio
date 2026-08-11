@@ -6,8 +6,8 @@ comptime nbands: Int = 10
 
 def main() raises:
 
-    buf = Buffer.load("resources/Shiverer.wav")
-    results = MelBands.buf_analysis(buf, chan=0, start_frame=0, num_frames=None, num_bands=nbands, power=2, window_size=fftsize, hop_size=hopsize, padding=Padding.half_window)
+    var buf = Buffer.load("resources/Shiverer.wav")
+    var results = MelBands.buf_analysis(buf, chan=0, start_frame=0, num_frames=None, num_bands=nbands, power=2, window_size=fftsize, hop_size=hopsize, padding=Padding.half_window)
 
     with open("testing_mmm_audio/validation/mojo_results/mel_bands_mojo.csv", "w") as f:
         for i,frame in enumerate(results):
