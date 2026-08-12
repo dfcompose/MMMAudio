@@ -187,9 +187,8 @@ struct Poly(Movable, Copyable):
 
         self._reset[audio_control = 1](poly_objects)
         var vals = List[Int]()
-        var trig: Bool = False
         for i in range(self.num_voices):
-            trig = self.m.notify_update(String(i), vals)
+            var trig = self.m.notify_update(String(i), vals)
             # if we received a trig, find and play a free voice
             if trig:
                 var free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
@@ -198,10 +197,9 @@ struct Poly(Movable, Copyable):
     
     def next_mtrig[T: PolyObject, call_back: def (mut poly_object: T, mut vals: List[Float64]) capturing -> None](mut self, mut poly_objects: List[T]):
         self._reset[audio_control = 1](poly_objects)
-        var trig: Bool = False
         var vals = List[Float64]()
         for i in range(self.num_voices):
-            trig = self.m.notify_update(String(i), vals)
+            var trig = self.m.notify_update(String(i), vals)
             # if we received a trig, find and play a free voice
             if trig:
                 var free_voice = self.find_voice_and_trigger(poly_objects, trig) # get the index of the free voice and trigger the PolyObject
@@ -418,12 +416,11 @@ trait GrainObject(PolyObject, Deinitable):
         """
         ...
 
-    def next_2[num_buf_chans: SIMDLength, num_playback_chans: Int = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans]) -> MFloat[2]:
+    def next_2[num_playback_chans: Int = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[_]) -> MFloat[2]:
         """This is the function to create if you want to output 2 channels using pan2 or pan_stereo.
 
         Parameters:
-            num_buf_chans: Number of channels in the source buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
-            num_playback_chans: Number of source channels to play back before panning.
+            num_playback_chans: Number of source channels to play back before panning. Either 1 or 2, depending on whether you want to pan 1 channel of the buffer out 2 channels or 2 channels of the buffer with equal power panning.
             win_type: Window type applied to the grain.
             custom_curve: Optional custom curve for user-defined envelopes.
             bWrap: Whether reads wrap around the source buffer.
@@ -437,11 +434,10 @@ trait GrainObject(PolyObject, Deinitable):
         print("GrainObject next_2 not implemented. Returning 0.0.")
         return 0.0
 
-    def next_multi_channel[num_buf_chans: SIMDLength, num_speakers: Int = 2, num_simd_chans: SIMDLength = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
+    def next_multi_channel[num_speakers: Int = 2, num_simd_chans: SIMDLength = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[_], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
         """Get the next sample of the grain as a multi-channel signal. By default, Grain uses azimuth panning with a width of 2.0 and an orientation of 0.5. However, you can use dbap or any other panning algorithm by creating a custom grain with its own next_multi_channel function. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions.
 
         Parameters:
-            num_buf_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             num_speakers: The number of speakers in the system. This is used for calculating the azimuth panning.
             num_simd_chans: The number of channels in the output sample. This must be a power of two and should be greater than or equal to num_speakers. If num_simd_chans is greater than num_speakers, the extra channels will just be 0.0.
             win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (Env) will be used as the window.
@@ -457,12 +453,11 @@ trait GrainObject(PolyObject, Deinitable):
         """
         return 0.0
 
-    def next_all[num_chans: SIMDLength, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_chans]) -> MFloat[num_chans]:
+    def next_all[win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[_]) -> MFloat[buffer.num_chans]:
         """
         Get the next sample of the grain. This function returns all channels of the buffer with no panning.
         
         Parameters:
-            num_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (env) will be used as the window.
             custom_curve: If win_type is WindowType.user_defined, applies a custom curve to the user defined envelope. This is the win_type parameter of the Env next function.
             bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
@@ -613,12 +608,11 @@ struct GrainAll(GrainObject):
         """
         self.buf_ratio = self.dur*ratio
 
-    def next_all[num_chans: SIMDLength, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_chans]) -> MFloat[num_chans]:
+    def next_all[win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[_]) -> MFloat[buffer.num_chans]:
         """
         Get the next sample of the grain. This function returns all channels of the buffer with no panning.
         
         Parameters:
-            num_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (env) will be used as the window.
             custom_curve: If win_type is WindowType.user_defined, applies a custom curve to the user defined envelope. This is the win_type parameter of the Env next function.
             bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
@@ -725,16 +719,14 @@ struct Grain(GrainObject):
         self.start_chan = start_chan
 
     def next_2[
-        num_buf_chans: SIMDLength, 
         num_playback_chans: Int = 1, 
         win_type: WindowType = WindowType.hann, 
         custom_curve: WindowType = WindowType.none, 
         bWrap: Bool = False
-    ](mut self, buffer: SIMDBuffer[num_buf_chans]) -> MFloat[2]:
+    ](mut self, buffer: SIMDBuffer[_]) -> MFloat[2]:
         """Get the next sample of the grain as a stereo signal with panning.
         
         Parameters:
-            num_buf_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             num_playback_chans: Either 1 or 2, depending on whether you want to pan 1 channel of the buffer out 2 channels or 2 channels of the buffer with equal power panning.
             win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (Env) will be used as the window.
             custom_curve: If win_type is WindowType.user_defined, applies a custom curve to the user defined envelope. This is the win_type parameter of the Env next function.
@@ -756,11 +748,10 @@ struct Grain(GrainObject):
             var panned = pan_stereo(MFloat[2](sample[self.start_chan], sample[(self.start_chan + 1) % buffer.get_num_chans()]), self.grain.pan) 
             return panned
 
-    def next_multi_channel[num_buf_chans: SIMDLength, num_speakers: Int = 2, num_simd_chans: SIMDLength = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
+    def next_multi_channel[num_speakers: Int = 2, num_simd_chans: SIMDLength = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[_], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
         """Get the next sample of the grain as a multi-channel signal. By default, Grain uses azimuth panning with a width of 2.0 and an orientation of 0.5. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions and pan_az for details on the panning parameters.
 
         Parameters:
-            num_buf_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             num_speakers: The number of speakers in the system. This is used for calculating the azimuth panning.
             num_simd_chans: The number of channels in the output sample. This must be a power of two and should be greater than or equal to num_speakers. If num_simd_chans is greater than num_speakers, the extra channels will just be 0.0.
             win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (Env) will be used as the window.
@@ -780,11 +771,10 @@ struct Grain(GrainObject):
 
         return panned
 
-    def next_all[num_chans: SIMDLength, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_chans]) -> MFloat[num_chans]:
+    def next_all[win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[_]) -> MFloat[buffer.num_chans]:
         """Get the next sample of the grain with no panning. This returns all channels of the buffer.
 
         Parameters:
-            num_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             win_type: The type of window to apply to the grain. A hann window is used by default, and will give the classic granular synthesis sound. If win_type is WindowType.user_defined, then the user_defined_env (Env) will be used as the window.
             custom_curve: If win_type is WindowType.user_defined, applies a custom curve to the user defined envelope. This is the win_type parameter of the Env next function.
             bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
@@ -919,11 +909,10 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
         return out * gain
 
     @always_inline
-    def next_multi_channel[num_buf_chans: SIMDLength, num_speakers: Int = 2, num_simd_chans: SIMDLength = 2, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0, gain: Float64 = 1.0) -> MFloat[num_simd_chans]:
+    def next_multi_channel[num_speakers: Int = 2, num_simd_chans: SIMDLength = 2, bWrap: Bool = False](mut self, buffer: SIMDBuffer[_], buffer_chan: Int = 0, gain: Float64 = 1.0) -> MFloat[num_simd_chans]:
         """Get the next sample of the grain as a multi-channel signal with azimuth panning. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions and pan_az for details on the panning parameters.
 
         Parameters:
-            num_buf_chans: The number of channels in the buffer. This is inferred at compile time based on the channel count of the SIMDBuffer that is passed in.
             num_speakers: The number of speakers in the system. This is used for calculating the azimuth panning.
             num_simd_chans: The number of channels in the output sample. This must be a power of two and should be greater than or equal to num_speakers. If num_simd_chans is greater than num_speakers, the extra channels will just be 0.0.
             bWrap: Whether to wrap around the buffer when reading. If false, the grain will read 0 when it reaches the end of the buffer. If true, the grain will wrap around to the beginning of the buffer when it reaches the end.
@@ -944,11 +933,10 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
         return out * gain
 
     @always_inline
-    def next_all[num_chans: SIMDLength, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_chans], gain: Float64 = 1.0) -> MFloat[num_chans]:
+    def next_all[bWrap: Bool = False](mut self, buffer: SIMDBuffer[_], gain: Float64 = 1.0) -> MFloat[buffer.num_chans]:
         """Generate the next set of grains. Depending on num_out_chans, will either pan a mono signal out 2 channels or a stereo signal out 2 channels.
         
         Parameters:
-            num_chans: A power of two num out channels that will determine the size of the SIMD output.
             bWrap: Whether to interpolate between the end and start of the buffer when reading (default: False). When False, reading beyond the end of the buffer will return 0. When True, the index into the buffer will wrap around to the beginning using a modulus.
 
         Args:
@@ -959,7 +947,7 @@ struct TGrains[T: GrainObject = Grain[], win_type: WindowType = WindowType.hann,
             Output samples for left and right channels as a SIMD vector.
         """
 
-        var out = MFloat[num_chans](0.0)
+        var out = MFloat[buffer.num_chans](0.0)
         for i in range(len(self.grains)):
             if self.poly.active_list[i]: 
                 out += self.grains[i].next_all[win_type=Self.win_type, custom_curve=Self.custom_curve, bWrap=bWrap](buffer)
@@ -1056,7 +1044,7 @@ struct PitchShift[num_chans: SIMDLength = 1, win_type: WindowType = WindowType.h
                 start_frame = Int(Float64(self.recorder.write_head) - ((grain_dur * self.world[].sample_rate) * (pitch_ratio2-1.0)) - (added_delay * self.world[].sample_rate)) % self.recorder.buf.num_frames
             self.tgrains.grains[grain_num].set_vals(pitch_ratio2, start_frame, grain_dur, 0.0, gain, 0)
 
-        var out = self.tgrains.next_all[Self.num_chans, bWrap = True](self.recorder.buf, gain)
+        var out = self.tgrains.next_all[bWrap = True](self.recorder.buf, gain)
 
         return out
 
