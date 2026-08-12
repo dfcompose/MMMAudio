@@ -434,6 +434,7 @@ trait GrainObject(PolyObject, Deinitable):
         Returns:
             The next stereo grain sample.
         """
+        print("GrainObject next_2 not implemented. Returning 0.0.")
         return 0.0
 
     def next_multi_channel[num_buf_chans: SIMDLength, num_speakers: Int = 2, num_simd_chans: SIMDLength = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
@@ -724,7 +725,7 @@ struct Grain(GrainObject):
         self.start_chan = start_chan
 
     def next_2[
-        num_buf_chans: Int, 
+        num_buf_chans: SIMDLength, 
         num_playback_chans: Int = 1, 
         win_type: WindowType = WindowType.hann, 
         custom_curve: WindowType = WindowType.none, 
@@ -755,7 +756,7 @@ struct Grain(GrainObject):
             var panned = pan_stereo(MFloat[2](sample[self.start_chan], sample[(self.start_chan + 1) % buffer.get_num_chans()]), self.grain.pan) 
             return panned
 
-    def next_multi_channel[num_buf_chans: Int, num_speakers: Int = 2, num_simd_chans: Int = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
+    def next_multi_channel[num_buf_chans: SIMDLength, num_speakers: Int = 2, num_simd_chans: SIMDLength = 2, win_type: WindowType = WindowType.hann, custom_curve: WindowType = WindowType.none, bWrap: Bool = False](mut self, buffer: SIMDBuffer[num_buf_chans], buffer_chan: Int = 0) -> MFloat[num_simd_chans]:
         """Get the next sample of the grain as a multi-channel signal. By default, Grain uses azimuth panning with a width of 2.0 and an orientation of 0.5. This only pans 1 channel of the buffer, specified by buffer_chan. See next_2 for param/arg descriptions and pan_az for details on the panning parameters.
 
         Parameters:

@@ -3,13 +3,13 @@ from mmm_audio import *
 # THE SYNTH
 
 comptime num_speakers = 2
-comptime num_simd_chans = 2
+comptime num_simd_chans: SIMDLength = 2
 
 struct Grains(Movable, Copyable):
     var world: World
     var buffer: SIMDBuffer[2]
     
-    var tgrains: TGrains[win_type = WindowType.hann] # try changing to WindowType.user_defined 
+    var tgrains: TGrains[Grain, win_type = WindowType.hann] # try changing to WindowType.user_defined 
     var impulse: Phasor[1]  
     var start_frame: Float64
     var m: Messenger
@@ -22,7 +22,7 @@ struct Grains(Movable, Copyable):
         # buffer uses numpy to load a buffer into an N channel array
         self.buffer = SIMDBuffer[2].load("resources/Shiverer.wav")
 
-        self.tgrains = TGrains[win_type = WindowType.hann](self.world, 10)  # Set the number of simultaneous grains
+        self.tgrains = TGrains[Grain, win_type = WindowType.hann](self.world, 10)  # Set the number of simultaneous grains
         self.impulse = Phasor[1](self.world)
         self.m = Messenger(world)
         self.max_trig_rate = 20.0
