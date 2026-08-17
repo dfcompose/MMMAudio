@@ -8,7 +8,7 @@ from mmm_python import *
 from math import pi
 # from wsl_fixes import MMMAudioWSL
 # instantiate and load the graph
-mmm_audio = MMMAudio(128, num_output_channels=4, graph_name="VectorBasedPanning", package_name="examples")
+mmm_audio = MMMAudio(128, num_output_channels=4, graph_name="VectorBasePanning", package_name="examples")
 
 mmm_audio.start_audio()
 

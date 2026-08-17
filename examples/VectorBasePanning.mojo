@@ -3,7 +3,7 @@ from mmm_audio import *
 # THE SYNTH
 
 
-struct VectorBasedPanning(Movable, Copyable):
+struct VectorBasePanning(Movable, Copyable):
     var world: World  
     var dust: Dust[1] 
     var messenger: Messenger
@@ -12,6 +12,7 @@ struct VectorBasedPanning(Movable, Copyable):
     var wsl: Int
     var pos: List[Float64]
     var mouse: Bool
+    var vbap_4: VBAP2D
     def __init__(out self, world: World):
         self.world = world
         self.dust = Dust[1](world)
@@ -21,6 +22,12 @@ struct VectorBasedPanning(Movable, Copyable):
         self.wsl = 0
         self.pos = [0.0, -1.0]
         self.mouse = False
+        self.vbap_4 = VBAP2D([
+            deg_to_rad(-55),
+            deg_to_rad(55),
+            deg_to_rad(-110),
+            deg_to_rad(110)
+            ])
 
     def next(mut self) -> MFloat[8]:
         
@@ -50,20 +57,15 @@ struct VectorBasedPanning(Movable, Copyable):
         # 4 speaker setup
         
         
-        comptime speakers : Array[Float64, 4] = [
-            deg_to_rad(-55),
-            deg_to_rad(55),
-            deg_to_rad(-110),
-            deg_to_rad(110)
-        ]
         
         
 
         var sig = self.dust.next(10, 40) * 0.5
         sig = self.filt.bpf(sig, 1200, 10.0, 1.0)
-
-        var out = vbap2D[4, max_simd, speakers](sig, self.az)
+        var pan = self.vbap_4.next[4](sig, self.az)
+        var out = MFloat[8](pan[0], pan[1], pan[2], pan[3], 0.0,0.0,0.0,0.0)
         
+
 
         #7 speaker setup
 

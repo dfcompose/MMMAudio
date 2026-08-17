@@ -419,18 +419,20 @@ struct VBAP2D(Movable, Copyable):
     An implementation of VBAP (Vector Base Amplitude Panning). Pans a mono sample to a 2D array of N speakers of arbitrary positions in radians that are equidistant from the listener.
     For more on VBAP see the paper written by Ville Pulkki:
     https://www.audiolabs-erlangen.de/media/pages/resources/aps-w23/papers/935eb793db-1663358804/sap_Pulkki1997.pdf .
-        
-    Args:
-        speaker_positions: A list of speaker position azimuths in radians.
-
     """
     var speaker_positions: List[Float64]
     var speaker_unit_vectors: List[MFloat[2]]
-    var speaker_pairs: List[MInt[2]]
+    var speaker_pairs: List[List[Int]]
     var speaker_inverse_bases: List[Array[MFloat[2], 2]]
     var num_speakers: Int
     
     def __init__(out self, speaker_positions: List[Float64]):
+        """
+        Initializes an instance of VBAP2D.
+
+        Args:
+            speaker_positions: A List of azimuth values in radians.
+        """
         self.num_speakers = len(speaker_positions)
         self.speaker_positions = []
         self.speaker_unit_vectors = []
@@ -490,19 +492,19 @@ struct VBAP2D(Movable, Copyable):
         
         return index
     
-    def calc_speaker_pairs(mut self) -> List[MInt[2]]:
-        var speaker_pairs = List[MInt[2]](length=self.num_speakers, fill=MInt[2](0.0))
+    def calc_speaker_pairs(mut self) -> List[List[Int]]:
+        var speaker_pairs = List[List[Int]](length=self.num_speakers, fill=[0,0])
         var unsorted_array = self.speaker_positions.copy()
         var sorted_array = self.speaker_positions.copy()
         sort(sorted_array)
         
         for i in range(self.num_speakers):
-            speaker_pairs[i] = MInt[2](self.index_of(unsorted_array, sorted_array[i]), self.index_of(unsorted_array, sorted_array[(i + 1) % self.num_speakers])) #MInt[2](i, i + 1)
+            speaker_pairs[i] = [self.index_of(unsorted_array, sorted_array[i]), self.index_of(unsorted_array, sorted_array[(i + 1) % self.num_speakers])]#List[Float64](i, i + 1)
         
 
         return speaker_pairs^
     
-    def calc_gain_factors(mut self, source_vec: MFloat[2], mut active_pair: MInt[2], mut active_gains: MFloat[2], source_az: Float64):
+    def calc_gain_factors(mut self, source_vec: MFloat[2], mut active_pair: List[Int], mut active_gains: MFloat[2], source_az: Float64):
         
 
         for speaker_pair in self.speaker_pairs:
@@ -565,7 +567,7 @@ struct VBAP2D(Movable, Copyable):
         Parameters:
             simd_out_size: The size of the output float. Must be larger than the number of speakers in the array and a power of two.
         """
-        var active_speaker_pair : MInt[2] = MInt[2](0, 1)
+        var active_speaker_pair : List[Int] = [0, 1]
         var active_gain_factors = MFloat[2](0.5)
         var source_vector = MFloat[2](cos(az), sin(az))
         
@@ -655,7 +657,7 @@ struct VBAP2D(Movable, Copyable):
 #         sort(sorted_array)
         
 #         for i in range(num_speakers):
-#             speaker_pairs[i] = [index_of(speaker_az_materialized, sorted_array[i]), index_of(speaker_az_materialized, sorted_array[(i + 1) % num_speakers])] #MInt[2](i, i + 1)
+#             speaker_pairs[i] = [index_of(speaker_az_materialized, sorted_array[i]), index_of(speaker_az_materialized, sorted_array[(i + 1) % num_speakers])] #List[Float64](i, i + 1)
         
         
 #         return speaker_pairs^
