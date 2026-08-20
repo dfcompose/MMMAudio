@@ -50,7 +50,7 @@ struct VectorBasePanning3D(Movable, Copyable):
         # comptime offset = deg_to_rad(90)
         if self.mouse:
             var x = linlin(self.world[].mouse_x(), 0.0, 1.0, 0.0, 2.0 * pi)
-            var y = linlin(self.world[].mouse_y(), 0.0, 1.0, 0.0, 2.0 * pi)
+            var y = linlin(self.world[].mouse_y(), 0.0, 1.0, -1.0 * pi, 1.0 * pi)
             self.az = x
             self.ht = y
         # self.world[].print("Hello?")
