@@ -637,9 +637,9 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
         num_speakers: The total number of speakers in the speaker array.
         simd_out_size: The SIMD vector out. Must be a power of two and greater than or equal to the number of speakers.
     """
-    var speaker_triplets: Array[Array[Int, 3], Self.num_speakers - 2]
+    var speaker_triplets: List[Array[Int, 3]]
     var speaker_unit_vectors: Array[MFloat[4], Self.num_speakers]
-    var speaker_inverse_bases: Array[Array[MFloat[4], 3], Self.num_speakers - 2]
+    var speaker_inverse_bases: List[Array[MFloat[4], 3]]
     var active_triplet: Array[Int, 3]
     var prev_az: Float64
     var prev_ht: Float64
@@ -657,9 +657,9 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
         """
         var scipy : PythonObject
         var py_list : PythonObject
-        self.speaker_triplets = Array[Array[Int,3], self.num_speakers - 2](fill=[0,0,0])
+        self.speaker_triplets : List[Array[Int,3]] = []
         self.speaker_unit_vectors = Array[MFloat[4], self.num_speakers](fill=MFloat[4](0.0))
-        self.speaker_inverse_bases = Array[Array[MFloat[4], 3], self.num_speakers - 2](fill=Array[MFloat[4], 3](fill=MFloat[4](0.0)))
+        self.speaker_inverse_bases : List[Array[MFloat[4], 3]] = []
         self.active_triplet = [0,1,2]
         self.prev_az = 0
         self.prev_ht = 0
@@ -673,20 +673,17 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
             scipy = Python.import_module("scipy.spatial")
             py_list = Python.list()
             
-            for point in self.speaker_positions:
-                var u = abs(0.5 + (point[1] - pi)) * cos(point[0])#sin(point[0]) * cos(point[1])
-                var v = abs(0.5 + (point[1] - pi)) * sin(point[0])#sin(point[1])
-                
-                py_list.append(Python.list(u, v))
-            var delaunay = scipy.Delaunay(py_list)
+            for vec in self.speaker_unit_vectors:
+                py_list.append([vec[0], vec[1], vec[2]])
+            var qhull = scipy.ConvexHull(py_list)
 
-            for i in range(len(delaunay.simplices)):
-                var triplet = delaunay.simplices[i]
+            for i in range(len(qhull.simplices)):
+                var triplet = qhull.simplices[i]
                 var first = Int(py=triplet[0])
                 var second = Int(py=triplet[1])
                 var third = Int(py=triplet[2])
                 
-                self.speaker_triplets[i] = [first, second, third]
+                self.speaker_triplets.append([first, second, third])
                 
                 pass
             print(self.speaker_triplets)
@@ -695,7 +692,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
             print("Error importing scipy Delaunay")
         
         
-        self.speaker_inverse_bases = self.calc_inverse_base()
+        self.calc_inverse_base()
         print("Inverse bases ", self.speaker_inverse_bases)
         
     
@@ -758,8 +755,8 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
                 new_array[i][j] *= determinant
         return new_array^
 
-    def calc_inverse_base(mut self) -> Array[Array[MFloat[4], 3], Self.num_speakers - 2]:
-        var inverse_bases = Array[Array[MFloat[4], 3], self.num_speakers - 2](fill=Array[MFloat[4], 3](fill=MFloat[4](0.0)))
+    def calc_inverse_base(mut self):
+       
 
         for i in range(len(self.speaker_triplets)):
             var speaker_a = self.speaker_unit_vectors[self.speaker_triplets[i][0]] #[-2, 1, 0]  [a, b, c]
@@ -767,12 +764,10 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
             var speaker_c = self.speaker_unit_vectors[self.speaker_triplets[i][2]] #[3, 2, 0]   [g, h, i]
             
             var inverted_bases = self.calc_inverse_3_by_3(speaker_a, speaker_b, speaker_c)
-            inverse_bases[i][0] = inverted_bases[0]
-            inverse_bases[i][1] = inverted_bases[1]
-            inverse_bases[i][2] = inverted_bases[2]
+            
+            self.speaker_inverse_bases.append([inverted_bases[0], inverted_bases[1], inverted_bases[2]])
 
-
-        return inverse_bases^
+        
 
     def calc_3_by_3_determinant(mut self, a: MFloat[4], b: MFloat[4], c: MFloat[4]) -> Float64:
        
@@ -827,7 +822,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
                 self.active_gain_factors[3] = 0.0
                 return
         
-        var gain_factors = Array[MFloat[4], self.num_speakers - 2](fill=MFloat[4](0.0))
+        var gain_factors = Array[MFloat[4], self.num_speakers + 8](fill=MFloat[4](0.0))
         var active_index : Int = 0
         
         for i in range(len(self.speaker_triplets)):

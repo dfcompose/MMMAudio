@@ -7,32 +7,7 @@ The position of the audio source is controlled by the mouse. The corners of the 
 from mmm_python import *
 from math import pi
 # instantiate and load the graph
-mmm_audio = MMMAudio(128, num_output_channels=4, graph_name="VectorBasePanning3D", package_name="examples")
-
-
-
-
-def calc_speaker_triplets(speakers):
-    triangles = []
-    speaker_u = []
-    speaker_v = []
-    speaker_uvs = []
-    for speaker in speakers:
-        vec = [cos(speaker[0]) * cos(speaker[1]), sin(speaker[0]) * cos(speaker[1]), sin(speaker[1])]
-        speaker_u.append(0.5 + (arctan2(vec[2], vec[0])/(2*pi)))
-        speaker_v.append(0.5 + (arcsin(vec[1])/pi))
-        speaker_uvs.append([(0.5 + speaker[1]) * cos(speaker[0]), (0.5 + speaker[1]) * sin(speaker[0])])
-
-
-    for i in range(len(speakers) - 2):
-          for j in range(len(speakers) - 2 - i):
-               for k in range(len(speakers) - 2 - j - i):
-                    triangles.append([i , i + 1 +  j, i + 2 + j + k])
-
-    speaker_uvs = [[speaker_u[x], speaker_v[x]] for x in range(len(speakers))]
-    return speaker_uvs
-
-
+mmm_audio = MMMAudio(128, num_output_channels=11, graph_name="VectorBasePanning3D", package_name="examples")
 
 
 mmm_audio.start_audio()
@@ -48,72 +23,6 @@ mmm_audio.send_float("az", -0.25 * 2 * pi)
 
 mmm_audio.send_float("ht", 0.35 * 2 * pi)
 
-
-# This implementation of VBAP uses UV unwrapping and Delaunay triangulation to determine speaker triplets. The code below shows the triplet mapping.
-from math import cos, sin, pi, sqrt
-from numpy import arctan2, arcsin
-from matplotlib import pyplot as plt
-from scipy.spatial import Delaunay, delaunay_plot_2d
-two_pi = 2 * pi
-speaker_positions = [
-    
-    [-0.25 * pi, 0],
-    [0.25 * pi, 0],
-    [-0.25 * pi, 0.35 * pi],
-    [0.25 * pi, 0.35 * pi],
-    [0.25 * pi, -0.35 * pi],
-    [-0.25 * pi, -0.35 * pi]
-]
-
-
-speaker_uvs = calc_speaker_triplets(speaker_positions)
-# for speaker in speaker_positions:
-#   speaker_uvs.append([(sin(speaker[0])) * cos(speaker[1]), sin(speaker[1])])
-
-
-
-
-delaunay = Delaunay(speaker_uvs)
-
-fig, ax = plt.subplots()
-delaunay_plot_2d(delaunay, ax=ax)
-
-for index, (x, y) in enumerate(speaker_uvs):
-  ax.text(
-      x + 0.01,
-      y + 0.01,
-      str(index),
-      fontsize=12,
-      color='red',
-      weight='bold',
-  )
-
-# clicked = False
-# def on_click(event):
-
-#     clicked = not clicked # type: ignore
-    
-
-    
-    
-
-def on_move(event):
-   
-    az = arctan2(event.xdata, abs(event.ydata))
-      
-    el = arcsin(event.ydata)
-    # print(az/pi, " ", el/pi)
-    mmm_audio.send_float("az", az)
-    
-    mmm_audio.send_float("ht", el)
-    pass
-      
-
-
-# plt.connect('button_press_event', on_click)
-plt.connect('motion_notify_event', on_move)
-plt.show()
-
 #Enable/disable mouse
 mmm_audio.send_bool("mouse", True)
 mmm_audio.send_bool("mouse", False)
@@ -124,4 +33,77 @@ MMMAudio.fake_mouse()
 mmm_audio.stop_audio()
 
 mmm_audio.plot(48000)
+
+# This implementation of VBAP uses the Quickhull algorithm to determine speaker triplets. For further explanantion see this paper by Hongchan Choi: https://repository.gatech.edu/atmire-ds/25e3c444-6cde-4c2b-a4e0-f015cb46211c/page/2
+# Executing the code below shows a 3d representation of all speaker triplets.
+from math import cos, sin
+import numpy as np
+from matplotlib import pyplot as plt
+from scipy.spatial import ConvexHull
+degrees_to_radians = pi/180
+
+# A 7.1.4 Atmos Array 
+speaker_positions = [
+    
+    [0.0, 0],#Center
+    [25 * degrees_to_radians, 0],# L
+    [-25 * degrees_to_radians, 0],# R
+    [90 * degrees_to_radians, 0], # LS
+    [-90 * degrees_to_radians, 0], # RS
+    [135  * degrees_to_radians, 0], # LB
+    [-135 * degrees_to_radians, 0], # RB
+    [40 * degrees_to_radians, 35 * degrees_to_radians], #LTF
+    [-40 * degrees_to_radians, 35 * degrees_to_radians], #RTF
+    [120 * degrees_to_radians, 35 * degrees_to_radians], #LTR
+    [-120 * degrees_to_radians, 35 * degrees_to_radians] #RTF
+
+]
+
+
+speaker_vectors = np.array([[cos(x[0]) * cos(x[1]),sin(x[0]) * cos(x[1]), sin(x[1])] for x in speaker_positions])
+
+# for speaker in speaker_positions:
+#   speaker_uvs.append([(sin(speaker[0])) * cos(speaker[1]), sin(speaker[1])])
+
+qhull = ConvexHull(speaker_vectors)
+qhull.simplices
+
+
+fig = plt.figure()
+ax = fig.add_subplot(projection="3d")
+
+
+
+
+xs = [vec[0] for vec in speaker_vectors]
+ys = [vec[1] for vec in speaker_vectors]
+zs = [vec[2] for vec in speaker_vectors]
+
+ax.scatter(xs,ys,zs) #type:ignore
+
+for i in range(len(qhull.simplices)):
+    speaker_1 = qhull.simplices[i][0]
+    speaker_2 = qhull.simplices[i][1]
+    speaker_3 = qhull.simplices[i][2]
+
+    
+    ax.plot3D(
+        [xs[speaker_1], xs[speaker_2]], 
+        [ys[speaker_1], ys[speaker_2]],
+        [zs[speaker_1], zs[speaker_2]]
+    )
+
+    ax.plot3D(
+            [xs[speaker_2], xs[speaker_3]], 
+            [ys[speaker_2], ys[speaker_3]],
+            [zs[speaker_2], zs[speaker_3]]
+        )
+    
+    ax.plot3D(
+            [xs[speaker_1], xs[speaker_3]], 
+            [ys[speaker_1], ys[speaker_3]],
+            [zs[speaker_1], zs[speaker_3]]
+        )
+plt.show()
+
 

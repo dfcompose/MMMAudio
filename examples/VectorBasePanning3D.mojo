@@ -13,7 +13,7 @@ struct VectorBasePanning3D(Movable, Copyable):
     var wsl: Int
     var pos: List[Float64]
     var mouse: Bool
-    var vbap: VBAP3D[6, 8]
+    var vbap: VBAP3D[11, 16]
     def __init__(out self, world: World):
         self.world = world
         self.dust = Dust[1](world)
@@ -24,19 +24,24 @@ struct VectorBasePanning3D(Movable, Copyable):
         self.wsl = 0
         self.pos = [0.0, -1.0]
         self.mouse = False
-        
-        var speaker_array : Array[MFloat[2], 6] = [
-            MFloat[2](-0.25 * pi, 0),
-            MFloat[2](0.25 * pi, 0),
-            MFloat[2](-0.25 * pi, 0.35 * pi),
-            MFloat[2](0.25 * pi, 0.35 * pi),
-            MFloat[2](0.25 * pi, -0.35 * pi),
-            MFloat[2](-0.25 * pi, -0.35 * pi)
+        comptime degrees_to_radians = pi/180
+        var speaker_array : Array[MFloat[2], 11] = [
+            MFloat[2](0.0, 0),#Center
+            MFloat[2](25 * degrees_to_radians, 0),# L
+            MFloat[2](-25 * degrees_to_radians, 0),# R
+            MFloat[2](90 * degrees_to_radians, 0), # LS
+            MFloat[2](-90 * degrees_to_radians, 0), # RS
+            MFloat[2](135  * degrees_to_radians, 0), # LB
+            MFloat[2](-135 * degrees_to_radians, 0), # RB
+            MFloat[2](40 * degrees_to_radians, 35 * degrees_to_radians), #LTF
+            MFloat[2](-40 * degrees_to_radians, 35 * degrees_to_radians), #RTF
+            MFloat[2](120 * degrees_to_radians, 35 * degrees_to_radians), #LTR
+            MFloat[2](-120 * degrees_to_radians, 35 * degrees_to_radians) #RTF
             ]
-        self.vbap = VBAP3D[6, 8](speaker_array)
+        self.vbap = VBAP3D[11, 16](speaker_array)
 
         
-    def next(mut self) -> MFloat[8]:
+    def next(mut self) -> MFloat[16]:
         
         comptime two_pi = 2 * pi
 
@@ -61,7 +66,7 @@ struct VectorBasePanning3D(Movable, Copyable):
         #     _ = self.vbap.next[8](sig, self.az, self.ht)
         var out = self.vbap.next(sig, self.az, self.ht)
         # var out = MFloat[8](0.0)
-        # self.world[].print(self.vbap.active_triplet)
+        self.world[].print(self.vbap.active_triplet)
         
         return out * 0.5
 
