@@ -333,7 +333,7 @@ def dbap2D[
     comptime assert simd_out_size & (simd_out_size - 1) == 0, "simd_out_size must be a power of two for dbap2D"
 
     # Calculates the covariance of speaker distances 
-    var materialized_speaker_positions = materialize[speaker_positions]()
+    var speaker_positions = materialize[speaker_positions]()
 
     def variance_of_dists[
         comp_num_speakers: Int, 
@@ -378,7 +378,7 @@ def dbap2D[
  
     # Calculates the k coefficient and gets distances for every speaker from the source
     for i in range(num_speakers):
-        var speaker = materialized_speaker_positions[i] - pos
+        var speaker = speaker_positions[i] - pos
         var xy = speaker * speaker
         dists[i] = sqrt(xy.reduce_add() + blur_sq)  
 
@@ -426,6 +426,7 @@ struct VBAP2D(Movable, Copyable):
     var speaker_inverse_bases: List[Array[MFloat[2], 2]]
     var num_speakers: Int
     
+    
     def __init__(out self, speaker_positions: List[Float64]):
         """
         Initializes an instance of VBAP2D.
@@ -438,6 +439,7 @@ struct VBAP2D(Movable, Copyable):
         self.speaker_unit_vectors = []
         self.speaker_pairs = []
         self.speaker_inverse_bases = []
+        
         for speaker_position in speaker_positions:
             self.speaker_positions.append(speaker_position)
 
@@ -547,12 +549,15 @@ struct VBAP2D(Movable, Copyable):
 
             if source_az == self.speaker_positions[speaker_pair[0]]:
                 active_pair = speaker_pair.copy()
-                active_gains = MFloat[2](1.0, 0.0)
+                active_gains[0] = 1.0
+                active_gains[1] = 0.0
                 
                 return
             elif source_az == self.speaker_positions[speaker_pair[1]]:
                 active_pair = speaker_pair.copy()
-                active_gains = MFloat[2](0.0, 1.0)
+                active_gains[0] = 0.0
+                active_gains[1] = 1.0
+                
                 return
         
         
@@ -624,76 +629,92 @@ struct VBAP2D(Movable, Copyable):
 from std.python import PythonObject
 from std.python import Python
 
-struct VBAP3D[num_speakers: Int](Movable, Copyable):
-    var speaker_triplets: List[Array[Int, 3]]
-    var speaker_positions: List[MFloat[2]]
-    var speaker_unit_vectors: List[MFloat[4]]
-    var speaker_inverse_bases: List[Array[MFloat[4], 3]]
+struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
+    """
+    An implementation of 3D Vector Base Amplitude Panning.
+
+    Parameters:
+        num_speakers: The total number of speakers in the speaker array.
+        simd_out_size: The SIMD vector out. Must be a power of two and greater than or equal to the number of speakers.
+    """
+    var speaker_triplets: Array[Array[Int, 3], Self.num_speakers - 2]
+    var speaker_unit_vectors: Array[MFloat[4], Self.num_speakers]
+    var speaker_inverse_bases: Array[Array[MFloat[4], 3], Self.num_speakers - 2]
     var active_triplet: Array[Int, 3]
+    var prev_az: Float64
+    var prev_ht: Float64
+    var gain_factors: MFloat[Self.simd_out_size]
+    var active_gain_factors: MFloat[4]
+    var speaker_positions: Array[MFloat[2], Self.num_speakers]
     # var num_speakers: Int = num_speakers
 
-    def __init__(out self, positions: List[MFloat[2]]):
+    def __init__(out self, speaker_positions: Array[MFloat[2], Self.num_speakers],):
         """
         An implementation of VBAP.
 
         Args:
-            positions: A list of azimuth and height values for speakers.
-        Parameters:
-            num_speakers: The number of speakers in the speaker array.
+            speaker_positions: An array of azimuth/height pairs for the speakers. A speaker with azimuth 0 is placed directly left. A speaker with height 0 is placed on the same horizontal plane as the listeners head.
         """
         var scipy : PythonObject
         var py_list : PythonObject
-        self.speaker_positions = []
-        self.speaker_triplets = []
-        self.speaker_unit_vectors = []
-        self.speaker_inverse_bases = []
+        self.speaker_triplets = Array[Array[Int,3], self.num_speakers - 2](fill=[0,0,0])
+        self.speaker_unit_vectors = Array[MFloat[4], self.num_speakers](fill=MFloat[4](0.0))
+        self.speaker_inverse_bases = Array[Array[MFloat[4], 3], self.num_speakers - 2](fill=Array[MFloat[4], 3](fill=MFloat[4](0.0)))
         self.active_triplet = [0,1,2]
+        self.prev_az = 0
+        self.prev_ht = 0
+        self.active_gain_factors = MFloat[4](0.0)
+        self.speaker_positions = speaker_positions.copy()
+        self.gain_factors = MFloat[self.simd_out_size](0.0)
 
-        
-
+        self.speaker_unit_vectors = self.calc_speaker_unit_vectors()
+        print("Unit vectors: ", self.speaker_unit_vectors)
         try:
             scipy = Python.import_module("scipy.spatial")
             py_list = Python.list()
             
-            for point in positions:
-                self.speaker_positions.append(point)
-                var u = cos(point[1]) * sin(point[0])
-                var v = sin(point[1])
-               
+            for point in self.speaker_positions:
+                var u = abs(0.5 + (point[1] - pi)) * cos(point[0])#sin(point[0]) * cos(point[1])
+                var v = abs(0.5 + (point[1] - pi)) * sin(point[0])#sin(point[1])
+                
                 py_list.append(Python.list(u, v))
             var delaunay = scipy.Delaunay(py_list)
 
-            for triplet in delaunay.simplices:
-                
+            for i in range(len(delaunay.simplices)):
+                var triplet = delaunay.simplices[i]
                 var first = Int(py=triplet[0])
                 var second = Int(py=triplet[1])
                 var third = Int(py=triplet[2])
                 
-                self.speaker_triplets.append([first, second, third])
+                self.speaker_triplets[i] = [first, second, third]
+                
                 pass
-            
+            print(self.speaker_triplets)
             print("Speaker triplets calculated successfully")
         except ImportError:
             print("Error importing scipy Delaunay")
         
-        self.speaker_unit_vectors = self.calc_speaker_unit_vectors()
-        print("Unit vectors: ", self.speaker_unit_vectors)
+        
         self.speaker_inverse_bases = self.calc_inverse_base()
         print("Inverse bases ", self.speaker_inverse_bases)
         
     
-    def calc_speaker_unit_vectors(mut self) -> List[MFloat[4]]:
+    def calc_speaker_unit_vectors(mut self) -> Array[MFloat[4], Self.num_speakers]:
         """
         Used internally to calculate the unit vectors of each speaker from a given azimuth.
 
         Returns:
             A list of unit vectors.
         """
-        var speaker_vectors = List[MFloat[4]](length=self.num_speakers, fill=MFloat[4](0.0))
+        var speaker_vectors = Array[MFloat[4], self.num_speakers](fill=MFloat[4](0.0))
         
 
         for i in range(self.num_speakers): # cos(az) * cos(ht), sin(ht) * cos(az), sin(ht)
-            speaker_vectors[i] = MFloat[4](cos(self.speaker_positions[i][0]) * cos(self.speaker_positions[i][1]), sin(self.speaker_positions[i][1]) * cos(self.speaker_positions[i][0]), sin(self.speaker_positions[i][1]), 0)
+            var new_vec = MFloat[4](cos(self.speaker_positions[i][0]) * cos(self.speaker_positions[i][1]), cos(self.speaker_positions[i][1]) * sin(self.speaker_positions[i][0]), sin(self.speaker_positions[i][1]), 0)
+            # new_vec = self.normalize_vector(new_vec)
+            speaker_vectors[i][0] = new_vec[0]
+            speaker_vectors[i][1] = new_vec[1]
+            speaker_vectors[i][2] = new_vec[2]
 
             if speaker_vectors[i][0] < 0.0000001 and speaker_vectors[i][0] > -0.0000001:
                 speaker_vectors[i][0] = 0
@@ -706,33 +727,39 @@ struct VBAP3D[num_speakers: Int](Movable, Copyable):
             
         return speaker_vectors^
 
+    def normalize_vector(self, vector: MFloat[4]) -> MFloat[4]:
+        var length = sqrt(vector * vector)
+        var out_vector = vector/length
+        return out_vector
 
-    def calc_determinant(mut self, a: Float64, b: Float64, c: Float64, d: Float64) -> Float64:
-        return (a * d) - (b * c)
+    
 
     def calc_inverse_3_by_3(mut self, a: MFloat[4], b: MFloat[4], c: MFloat[4]) -> Array[MFloat[4], 3]:
         var new_array = InlineArray[MFloat[4], 3](fill=0.0)
-        var determinant = (a[0] * b[1] * c[2]) + (a[1] * b[2] * c[0]) + (a[2] * b[0] * c[1]) - (a[0] * b[2] * c[1]) - (a[1] * b[0] * c[2]) - (a[2] * b[1] * c[0])
+        var determinant = 1.0/self.calc_3_by_3_determinant(a,b,c)
         # Row 1
-        new_array[0][0] = self.calc_determinant(b[1], b[2], c[1], c[2]) / determinant
-        new_array[1][0] = self.calc_determinant(b[0], b[2], c[0], c[2]) * -1 / determinant
-        new_array[2][0] = self.calc_determinant(b[0], b[1], c[0], c[1]) / determinant
+       
+        new_array[0][0] = ((b[1] * c[2]) - (c[1] * b[2])) * determinant
+        new_array[1][0] = ((a[1] * c[2]) - (c[1] * a[2])) * -1 * determinant 
+        new_array[2][0] = ((a[1] * b[2]) - (a[2] * b[1])) * determinant
         
         # Row 2
-        new_array[0][1] = self.calc_determinant(a[1], a[2], c[1], c[2]) * -1 / determinant
-        new_array[1][1] = self.calc_determinant(a[0], a[2], c[0], c[2]) / determinant
-        new_array[2][1] = self.calc_determinant(a[0], a[1], c[0], c[1]) * -1 / determinant
+        new_array[0][1] = ((b[0] * c[2]) - (b[2] * c[0])) * -1 * determinant
+        new_array[1][1] = ((a[0] * c[2]) - (a[2] * c[0])) * determinant
+        new_array[2][1] = ((a[0] * b[2]) - (a[2] * b[0])) * -1 * determinant 
 
         # Row 3
-        new_array[0][2] = self.calc_determinant(a[1], a[2], b[1], b[2]) / determinant
-        new_array[1][2] = self.calc_determinant(a[0], a[2], b[0], b[2]) * -1 / determinant
-        new_array[2][2] = self.calc_determinant(a[0], a[1], b[0], b[1]) / determinant
+        new_array[0][2] = ((b[0] * c[1]) - (b[1] * c[0])) * determinant
+        new_array[1][2] = ((a[0] * c[1]) - (a[1] * c[0])) * -1 * determinant 
+        new_array[2][2] = ((a[0] * b[1]) - (a[1] * b[0])) * determinant
 
-
+        for i in range(3):
+            for j in range(3):
+                new_array[i][j] *= determinant
         return new_array^
 
-    def calc_inverse_base(mut self) -> List[Array[MFloat[4], 3]]:
-        var inverse_bases = List[Array[MFloat[4], 3]](length= self.num_speakers,fill=Array[MFloat[4], 3](fill=0.0))
+    def calc_inverse_base(mut self) -> Array[Array[MFloat[4], 3], Self.num_speakers - 2]:
+        var inverse_bases = Array[Array[MFloat[4], 3], self.num_speakers - 2](fill=Array[MFloat[4], 3](fill=MFloat[4](0.0)))
 
         for i in range(len(self.speaker_triplets)):
             var speaker_a = self.speaker_unit_vectors[self.speaker_triplets[i][0]] #[-2, 1, 0]  [a, b, c]
@@ -747,41 +774,60 @@ struct VBAP3D[num_speakers: Int](Movable, Copyable):
 
         return inverse_bases^
 
-    def calc_gain_factors(mut self, source_vec: MFloat[4], mut active_triplet: Array[Int, 3], mut active_gains: MFloat[4], source_az: Float64, source_ht: Float64):
+    def calc_3_by_3_determinant(mut self, a: MFloat[4], b: MFloat[4], c: MFloat[4]) -> Float64:
+       
+        var vec_a = a[0] * ((b[1] * c[2]) - (b[2] * c[1]))
+        var vec_b = a[1] * ((b[0] * c[2]) - (b[2] * c[0]))
+        var vec_c = a[2] * ((b[0] * c[1]) - (b[1] * c[0]))
+        var determinant = vec_a - vec_b + vec_c
+        
+        if determinant != 0:
+            return determinant
+        else:
+            return 1.0
+    
+    def calc_gain_factors(mut self, source_vec: MFloat[4], source_az: Float64, source_ht: Float64):
         """
         Internal method used for calculating gain factors of speaker pairs.
 
         Args:
             source_vec: The unit vector of the source.
-            active_triplet: The current active speaker pair.
-            active_gains: The current active gains.
             source_az: The azimuth position of the source in radians.
             source_ht: The height of the source in radians.
         """
-
+    
         for speaker_triplet in self.speaker_triplets:
 
             if source_az == self.speaker_positions[speaker_triplet[0]][0] and source_ht == self.speaker_positions[speaker_triplet[0]][1]:
-                active_triplet[0] = speaker_triplet[0]
-                active_triplet[1] = speaker_triplet[1]
-                active_triplet[2] = speaker_triplet[2]
-                active_gains = MFloat[4](1.0, 0.0, 0.0, 0.0)
+                self.active_triplet[0] = speaker_triplet[0]
+                self.active_triplet[1] = speaker_triplet[1]
+                self.active_triplet[2] = speaker_triplet[2]
+                self.active_gain_factors[0] = 1.0
+                self.active_gain_factors[1] = 0.0
+                self.active_gain_factors[2] = 0.0
+                self.active_gain_factors[3] = 0.0
                 
                 return
             elif source_az == self.speaker_positions[speaker_triplet[1]][0] and source_ht == self.speaker_positions[speaker_triplet[1]][1]:
-                active_triplet[0] = speaker_triplet[0]
-                active_triplet[1] = speaker_triplet[1]
-                active_triplet[2] = speaker_triplet[2]
-                active_gains = MFloat[4](0.0, 1.0, 0.0, 0.0)
+                self.active_triplet[0] = speaker_triplet[0]
+                self.active_triplet[1] = speaker_triplet[1]
+                self.active_triplet[2] = speaker_triplet[2]
+                self.active_gain_factors[0] = 0.0
+                self.active_gain_factors[1] = 1.0
+                self.active_gain_factors[2] = 0.0
+                self.active_gain_factors[3] = 0.0
                 return
             elif source_az == self.speaker_positions[speaker_triplet[2]][0] and source_ht == self.speaker_positions[speaker_triplet[2]][1]:
-                active_triplet[0] = speaker_triplet[0]
-                active_triplet[1] = speaker_triplet[1]
-                active_triplet[2] = speaker_triplet[2]
-                active_gains = MFloat[4](0.0, 0.0, 1.0, 0.0)
+                self.active_triplet[0] = speaker_triplet[0]
+                self.active_triplet[1] = speaker_triplet[1]
+                self.active_triplet[2] = speaker_triplet[2]
+                self.active_gain_factors[0] = 0.0
+                self.active_gain_factors[1] = 0.0
+                self.active_gain_factors[2] = 1.0
+                self.active_gain_factors[3] = 0.0
                 return
         
-        var gain_factors = Array[MFloat[4], self.num_speakers](fill=MFloat[4](0.0))
+        var gain_factors = Array[MFloat[4], self.num_speakers - 2](fill=MFloat[4](0.0))
         var active_index : Int = 0
         
         for i in range(len(self.speaker_triplets)):
@@ -811,19 +857,19 @@ struct VBAP3D[num_speakers: Int](Movable, Copyable):
             if gain_factors[i][0] >= 0.0 and gain_factors[i][1] >= 0.0:
                 active_index = i 
                 var scaled_gains = gain_factors[active_index] / (sqrt((gain_factors[active_index] * gain_factors[active_index]).reduce_add()))
-                active_gains = scaled_gains
+                self.active_gain_factors = scaled_gains
                 break
             elif smallest_gain > min(gain_factors[largest_small_gain][0], gain_factors[largest_small_gain][1]):
                 largest_small_gain = i 
                 active_index = i
 
-        active_triplet[0] = self.speaker_triplets[active_index][0]
-        active_triplet[1] = self.speaker_triplets[active_index][1]
-        active_triplet[2] = self.speaker_triplets[active_index][2]
+        self.active_triplet[0] = self.speaker_triplets[active_index][0]
+        self.active_triplet[1] = self.speaker_triplets[active_index][1]
+        self.active_triplet[2] = self.speaker_triplets[active_index][2]
         var scaled_gains = gain_factors[active_index] / (sqrt((gain_factors[active_index] * gain_factors[active_index]).reduce_add()))
-        active_gains = scaled_gains
+        self.active_gain_factors = scaled_gains
 
-    def next[simd_out_size:Int](mut self, sample: Float64, az: Float64, ht: Float64) -> MFloat[simd_out_size]:
+    def next(mut self, sample: Float64, az: Float64, ht: Float64) -> MFloat[Self.simd_out_size]:
         """
         Pans a mono sample based on a target azimuth and height.
 
@@ -832,19 +878,17 @@ struct VBAP3D[num_speakers: Int](Movable, Copyable):
             az: The azimuth in radians.
             ht: The height of the source in radians.
         
-        Parameters:
-            simd_out_size: The size of the output float. Must be larger than the number of speakers in the array and a power of two.
         """
-        var active_speaker_triplet : Array[Int, 3] = [0, 1, 3]
-        var active_gain_factors = MFloat[4](0.0)
-        var source_vector = MFloat[4](cos(az) * cos(ht), sin(ht) * cos(az), sin(ht), 0.0)
+        var source_vector = MFloat[4](cos(az) * cos(ht), cos(ht) * sin(az), sin(ht), 0.0)
+        if az != self.prev_az or ht != self.prev_ht:
+            self.calc_gain_factors(source_vector, az, ht)
+            self.prev_az = az
+            self.prev_ht = ht
         
-        self.calc_gain_factors(source_vector, active_speaker_triplet, active_gain_factors, az, ht)
-        
-        var gain_factors = MFloat[simd_out_size](0.0)
+        var gain_factors = MFloat[self.simd_out_size](0.0)
     
-        gain_factors[Int(active_speaker_triplet[0])] = active_gain_factors[0]
-        gain_factors[Int(active_speaker_triplet[1])] = active_gain_factors[1]
-        gain_factors[Int(active_speaker_triplet[2])] = active_gain_factors[2]
-        self.active_triplet = active_speaker_triplet.copy()
+        gain_factors[Int(self.active_triplet[0])] = self.active_gain_factors[0]
+        gain_factors[Int(self.active_triplet[1])] = self.active_gain_factors[1]
+        gain_factors[Int(self.active_triplet[2])] = self.active_gain_factors[2]
+        
         return gain_factors * sample

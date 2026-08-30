@@ -13,7 +13,7 @@ struct VectorBasePanning3D(Movable, Copyable):
     var wsl: Int
     var pos: List[Float64]
     var mouse: Bool
-    var vbap: VBAP3D[8]
+    var vbap: VBAP3D[6, 8]
     def __init__(out self, world: World):
         self.world = world
         self.dust = Dust[1](world)
@@ -24,16 +24,16 @@ struct VectorBasePanning3D(Movable, Copyable):
         self.wsl = 0
         self.pos = [0.0, -1.0]
         self.mouse = False
-        self.vbap = VBAP3D[8]([
-            MFloat[2](deg_to_rad(-55), deg_to_rad(55)),
-            MFloat[2](deg_to_rad(55), deg_to_rad(55)),
-            MFloat[2](deg_to_rad(-55), deg_to_rad(-55)),
-            MFloat[2](deg_to_rad(55), deg_to_rad(-55)),
-            MFloat[2](deg_to_rad(-110), deg_to_rad(110)),
-            MFloat[2](deg_to_rad(110), deg_to_rad(110)),
-            MFloat[2](deg_to_rad(-110), deg_to_rad(-110)),
-            MFloat[2](deg_to_rad(110), deg_to_rad(-110)),
-            ])
+        
+        var speaker_array : Array[MFloat[2], 6] = [
+            MFloat[2](-0.25 * pi, 0),
+            MFloat[2](0.25 * pi, 0),
+            MFloat[2](-0.25 * pi, 0.35 * pi),
+            MFloat[2](0.25 * pi, 0.35 * pi),
+            MFloat[2](0.25 * pi, -0.35 * pi),
+            MFloat[2](-0.25 * pi, -0.35 * pi)
+            ]
+        self.vbap = VBAP3D[6, 8](speaker_array)
 
         
     def next(mut self) -> MFloat[8]:
@@ -49,7 +49,7 @@ struct VectorBasePanning3D(Movable, Copyable):
      
         # comptime offset = deg_to_rad(90)
         if self.mouse:
-            var x = linlin(self.world[].mouse_x(), 0.0, 1.0, 0.0, 2.0 * pi)
+            var x = linlin(self.world[].mouse_x(), 0.0, 1.0, 0.0, 1.0)
             var y = linlin(self.world[].mouse_y(), 0.0, 1.0, -1.0 * pi, 1.0 * pi)
             self.az = x
             self.ht = y
@@ -59,9 +59,9 @@ struct VectorBasePanning3D(Movable, Copyable):
 
         # if self.messenger.notify_update("ht", self.ht):
         #     _ = self.vbap.next[8](sig, self.az, self.ht)
-        var out = self.vbap.next[8](sig, self.az, self.ht)
+        var out = self.vbap.next(sig, self.az, self.ht)
         # var out = MFloat[8](0.0)
-        self.world[].print(self.vbap.active_triplet)
+        # self.world[].print(self.vbap.active_triplet)
         
         return out * 0.5
 
