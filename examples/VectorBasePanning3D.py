@@ -11,17 +11,17 @@ mmm_audio = MMMAudio(128, num_output_channels=11, graph_name="VectorBasePanning3
 
 
 mmm_audio.start_audio()
+degrees_to_radians = pi/180
 
-mmm_audio.send_float("az", 0.2 * 2 * pi)
-mmm_audio.send_float("az", 0.125 * 2 * pi)
-mmm_audio.send_float("az", -0.25 * 2 * pi)
+mmm_audio.send_float("az", 0.0 * pi)
+mmm_audio.send_float("az", -0.25  * pi)
 # mmm_audio.send_float("az", 0.375 * 2 * pi)
 # mmm_audio.send_float("az", 0.5 * 2 * pi)
 # mmm_audio.send_float("az", 0.625 * 2 * pi)
 # mmm_audio.send_float("az", 0.75 * 2 * pi)
 # mmm_audio.send_float("az", 0.875 * 2 * pi)
-
-mmm_audio.send_float("ht", 0.35 * 2 * pi)
+mmm_audio.send_float("az", 185 * degrees_to_radians + (1.0 * pi))
+mmm_audio.send_float("ht", -0.2* 2 * pi)
 
 #Enable/disable mouse
 mmm_audio.send_bool("mouse", True)
@@ -40,24 +40,53 @@ from math import cos, sin
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.spatial import ConvexHull
-degrees_to_radians = pi/180
+
+
+# Test 5 speaker array
+speaker_positions = [
+    [-0.5 * pi, 0.0],
+    [0.0, 0.0],
+    [0.5 * pi, 0.0],
+    [0.0, -0.5 * pi],
+    [0.0, 0.5 * pi]
+]
+
 
 # A 7.1.4 Atmos Array 
-speaker_positions = [
+# speaker_positions = [
     
-    [0.0, 0],#Center
-    [25 * degrees_to_radians, 0],# L
-    [-25 * degrees_to_radians, 0],# R
-    [90 * degrees_to_radians, 0], # LS
-    [-90 * degrees_to_radians, 0], # RS
-    [135  * degrees_to_radians, 0], # LB
-    [-135 * degrees_to_radians, 0], # RB
-    [40 * degrees_to_radians, 35 * degrees_to_radians], #LTF
-    [-40 * degrees_to_radians, 35 * degrees_to_radians], #RTF
-    [120 * degrees_to_radians, 35 * degrees_to_radians], #LTR
-    [-120 * degrees_to_radians, 35 * degrees_to_radians] #RTF
+#     [0.0, 0],#Center
+#     [25 * degrees_to_radians, 0],# L
+#     [-25 * degrees_to_radians, 0],# R
+#     [90 * degrees_to_radians, 0], # LS
+#     [-90 * degrees_to_radians, 0], # RS
+#     [135  * degrees_to_radians, 0], # LB
+#     [-135 * degrees_to_radians, 0], # RB
+#     [40 * degrees_to_radians, 35 * degrees_to_radians], #LTF
+#     [-40 * degrees_to_radians, 35 * degrees_to_radians], #RTF
+#     [120 * degrees_to_radians, 35 * degrees_to_radians], #LTR
+#     [-120 * degrees_to_radians, 35 * degrees_to_radians] #RTF
 
-]
+# ]
+
+
+# LSU Immersive Lab
+# speaker_positions = [
+#     (0.0, 0),#Center
+#     (25 * degrees_to_radians, 0),# L
+#     (-25 * degrees_to_radians, 0),# R
+#     (90 * degrees_to_radians, 0), # LS
+#     (-90 * degrees_to_radians, 0), # RS
+#     (135  * degrees_to_radians, 0), # LB
+#     (-135 * degrees_to_radians, 0), # RB
+#     (40 * degrees_to_radians, 35 * degrees_to_radians), #LTF
+#     (-40 * degrees_to_radians, 35 * degrees_to_radians), #RTF
+#     (120 * degrees_to_radians, 35 * degrees_to_radians), #LTR
+#     (-120 * degrees_to_radians, 35 * degrees_to_radians) #RTF
+        
+# ]
+
+
 
 
 speaker_vectors = np.array([[cos(x[0]) * cos(x[1]),sin(x[0]) * cos(x[1]), sin(x[1])] for x in speaker_positions])
@@ -104,6 +133,9 @@ for i in range(len(qhull.simplices)):
             [ys[speaker_1], ys[speaker_3]],
             [zs[speaker_1], zs[speaker_3]]
         )
+
+for i in range(len(speaker_vectors)):
+    ax.text(xs[i], ys[i], zs[i], "Speaker" + str(i), color='black', fontsize=10)
 plt.show()
 
 
