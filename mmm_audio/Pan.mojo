@@ -414,6 +414,119 @@ def dbap2D[
     return out
 
 
+
+@always_inline
+def dbap3D[
+    num_speakers: Int, 
+    simd_out_size: Int,
+    speaker_positions: InlineArray[MFloat[4], num_speakers],
+    weights: InlineArray[Float64, num_speakers]]
+    (
+        sample: Float64, 
+        pos: MFloat[4], 
+        blur: Float64 = 0.1, 
+        rolloff: Float64 = 6
+    ) -> MFloat[simd_out_size]:
+    """
+    Implements 3D DBAP (Distance Based Amplitude Panning). Pans a mono sample to N speakers of arbitrary positions in meters.
+    For more on DBAP see the paper written by Trond Lossius, Pascal Baltazar, and Theo de la Hague.
+    https://jamoma.org/publications/attachments/icmc2009-dbap-rev1.pdf .
+
+    Parameters:
+        num_speakers: The number of speakers as an integer.
+        simd_out_size: Must be a power of 2 and greater than num_speakers.
+        speaker_positions: The speaker positions as an InlineArray of Tuple[Float64] x/y/z coordinates in meters from a center position.
+        weights: An InlineArray of Float64s (between 0.0 and 1.0) defining speaker weights for DBAP. Speaker weights allow for a source to be restricted to a subset of speakers. Speaker weights of 0.0 will disallow a source from playing through that speaker.
+
+    Args:
+        sample: Mono input sample.
+        pos: X/Y position of the source from center in meters as a List[Float64].
+        blur: Blurs the source, causing it to spread to more speakers. Values must be greater than or equal to 0, with 0 being the most localizable and values > 0 becoming less and less localizable. There is no limit to the amount of blur but values over 5 have diminishing returns.
+        rolloff: The amplitude rolloff in dB, this must be > 0.0. 6.0 equals the inverse distance law for sound in an open field. Lower values will decrease the attenuation of the signal over distance, while larger values will increase this attenuation.
+    
+    Returns:
+        MFloat[simd_out_size]: The panned output sample for each speaker.
+    """
+    comptime assert num_speakers <= simd_out_size, "num_speakers must be less than or equal to simd_out_size for dbap2D"
+    comptime assert simd_out_size & (simd_out_size - 1) == 0, "simd_out_size must be a power of two for dbap2D"
+
+    # Calculates the covariance of speaker distances 
+    
+
+    def variance_of_dists[comp_num_speakers: Int, comp_speaker_positions: InlineArray[MFloat[4], comp_num_speakers]]() -> Float64:
+       
+        var dists = MFloat[next_power_of_two(comp_num_speakers)](0.0)
+        
+        for i in range(comp_num_speakers):
+            var dist = materialize[comp_speaker_positions]()[i] * materialize[comp_speaker_positions]()[i]
+            var dist_from_center = sqrt(dist.reduce_add())
+
+            dists[i] = dist_from_center
+        
+        var mean : Float64 = dists.reduce_add() / Float64(comp_num_speakers)
+        
+        return pow(dists - mean, 2).reduce_add() / Float64(comp_num_speakers)
+        
+    
+    comptime vec_weights = array_to_mfloat[simd_out_size, weights]()
+    comptime speaker_position_variance : Float64 = variance_of_dists[num_speakers, speaker_positions]()
+    
+    # Calculates the blur factor using the speaker variance to normalize
+    var blur_sq : Float64
+
+    # comptime if speaker_position_variance == 0:
+    #         blur_sq = pow(max(0.0001, blur), 2)
+    #     else:
+    #         blur_sq = pow(max(0.0001, blur * speaker_position_variance), 2)
+
+    blur_sq = pow(max(0.0001, blur * speaker_position_variance), 2)
+    # var blur_sq = pow(max(0.00001, blur), 2)
+
+   # Set dists to 1.0 by default to avoid divide by 0 when calculating k
+    var dists = MFloat[simd_out_size](1.0)
+ 
+    # Calculates the k coefficient and gets distances for every speaker from the source
+    for i in range(num_speakers):
+        var speaker = materialize[speaker_positions]()[i] - pos
+        var xyz = speaker * speaker
+        dists[i] = sqrt(xyz.reduce_add() + blur_sq)  
+
+    # SIMD optimization 
+    comptime num_pairs = num_speakers // 2
+
+    # Calculates the a coefficient given a rolloff in dB
+    var a = rolloff/6.02059991328
+    var two_a = 2 * a
+    var denom = 0.0
+    for i in range(num_pairs):
+        var w = MFloat[2](vec_weights[i*2], vec_weights[i*2+1])
+        var d = MFloat[2](dists[i*2], dists[i*2+1])
+
+        denom += ((w * w) / pow(d, two_a)).reduce_add()
+
+    comptime if num_speakers % 2 != 0:
+        denom += (vec_weights[num_speakers - 1] * vec_weights[num_speakers - 1]) / pow(dists[num_speakers - 1], two_a)
+
+    var k = 1 / sqrt(denom)
+
+    var out = MFloat[simd_out_size](0.0)
+    for i in range(num_pairs):
+        var temp = k * MFloat[2](vec_weights[i*2], vec_weights[i*2+1]) / pow(MFloat[2](dists[i*2], dists[i*2+1]), a) * sample
+        out[i*2] = temp[0]
+        out[i*2+1] = temp[1]
+    comptime if num_speakers % 2 != 0:
+        out[num_speakers - 1] = k * vec_weights[num_speakers - 1] / pow(dists[num_speakers - 1], a) * sample
+
+
+    # out = MFloat[simd_out_size](blur_sq)
+
+    return out
+
+
+
+
+
+
 struct VBAP2D(Movable, Copyable):
     """
     An implementation of VBAP (Vector Base Amplitude Panning). Pans a mono sample to a 2D array of N speakers of arbitrary positions in radians that are equidistant from the listener.
@@ -711,29 +824,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
                     self.speaker_inverse_bases[i][j] = MFloat[4](Float64(py=vec[0]), Float64(py=vec[1]), Float64(py=vec[2]), 0.0)
                 
                 self.speaker_triplets.append([first, second, third])
-                
-            # var matrices = Python.list()
-            # for triplet in self.speaker_triplets:
-            #     matrices.append([
-            #        py_list[triplet[0]],
-            #        py_list[triplet[1]],
-            #        py_list[triplet[2]]
-            #     ])
-            
-
-            
-            # for matrix in matrices:
-            #     print("Inv Matrices ", np.linalg.inv(matrix))
-                
-            #     for i in range(len(inv_matrix)):
-            #         var new_arr = Array[MFloat[4], 3](fill=MFloat[4](0.0)) 
-            #         new_arr[0] = MFloat[4](Float64(py=inv_matrix[i][0][0]), Float64(py=inv_matrix[i][0][1]), Float64(py=inv_matrix[i][0][2]), 0.0)
-            #         new_arr[1] = MFloat[4](Float64(py=inv_matrix[i][1][0]), Float64(py=inv_matrix[i][1][1]), Float64(py=inv_matrix[i][1][2]), 0.0)
-            #         new_arr[2] = MFloat[4](Float64(py=inv_matrix[i][2][0]), Float64(py=inv_matrix[i][2][1]), Float64(py=inv_matrix[i][2][2]), 0.0)
-            #         # self.speaker_inverse_bases.append(new_arr^)
-            #         print(new_arr)
-            #         pass
-                                        
+                                       
 
             
             print("Speaker triplets calculated successfully")
@@ -742,16 +833,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
         
         
         
-        # self.calc_inverse_base()
-       
-        
-        # #removes triplets that are coplanar with origin
-        # var triplet_len = len(self.speaker_triplets)
-        # for i in range(len(self.speaker_triplets)):
-        #     if self.speaker_triplets[triplet_len-i-1][0] == -1:
-        #         _ = self.speaker_triplets.pop(triplet_len-i-1)
-                
-
+      
         print(self.speaker_triplets)
         print("Inverse bases ", self.speaker_inverse_bases)
         
@@ -784,91 +866,6 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
             
         return speaker_vectors^
 
-    def normalize_vector(self, vector: MFloat[4]) -> MFloat[4]:
-        var length = sqrt(vector * vector)
-        var out_vector = vector/length
-        return out_vector
-
-    
-
-    def calc_inverse_3_by_3(mut self, a: MFloat[4], b: MFloat[4], c: MFloat[4]) -> Array[MFloat[4], 3]:
-        var new_array = InlineArray[MFloat[4], 3](fill=0.0)
-        var determinant = self.calc_3_by_3_determinant(a,b,c)
-
-        if determinant != -100000:
-        # Row 1
-            new_array[0][0] = self.calc_2_by_2_determinant([b[2], b[3]], [c[2], c[3]]) * determinant
-            new_array[1][0] = self.calc_2_by_2_determinant([a[2], a[3]],[c[2], c[3]]) * -1 * determinant 
-            new_array[2][0] = self.calc_2_by_2_determinant([a[2], a[3]],[b[2], b[3]])* determinant
-            
-            # Row 2
-            new_array[0][1] = self.calc_2_by_2_determinant([b[1], b[3]],[c[1], c[3]]) * -1 * determinant
-            new_array[1][1] = self.calc_2_by_2_determinant([a[1], a[3]],[c[1],c[3]]) * determinant
-            new_array[2][1] = self.calc_2_by_2_determinant([a[1], a[3]],[b[1], b[3]]) * -1 * determinant 
-
-            # Row 3
-            new_array[0][2] = self.calc_2_by_2_determinant([b[1],b[2]],[c[1],c[2]]) * determinant
-            new_array[1][2] = self.calc_2_by_2_determinant([a[1],a[2]],[c[1],c[2]]) * -1 * determinant 
-            new_array[2][2] = self.calc_2_by_2_determinant([a[1],a[2]],[b[1],b[2]]) * determinant
-
-            
-            return new_array^
-    
-    def calc_2_by_2_determinant(mut self, veca: List[Float64], vecb: List[Float64]) -> Float64:
-
-        return (veca[0] * vecb[1]) - (veca[1] * vecb[0])
-    
-    # def calc_inverse_base(mut self):
-       
-
-    #     for i in range(len(self.speaker_triplets)):
-    #         var a = self.speaker_unit_vectors[self.speaker_triplets[i][0]] #[-2, 1, 0]  [a, b, c]
-    #         var b = self.speaker_unit_vectors[self.speaker_triplets[i][1]] #[1, 2, 1]   [d, e, f]
-    #         var c = self.speaker_unit_vectors[self.speaker_triplets[i][2]] #[3, 2, 0]   [g, h, i]
-            
-
-    #         var new_array = InlineArray[MFloat[4], 3](fill=0.0)
-    #         var determinant = self.calc_3_by_3_determinant(a, b, c)
-            
-    #         if determinant != -100000:
-    #         # Row 1
-    #             determinant = 1.0/determinant
-    #             new_array[0][0] = self.calc_2_by_2_determinant([b[1], b[2]], [c[1], c[2]]) * determinant
-    #             new_array[1][0] = self.calc_2_by_2_determinant([a[1], a[2]],[c[1], c[2]]) * -1 * determinant 
-    #             new_array[2][0] = self.calc_2_by_2_determinant([a[1], a[2]],[b[1], b[2]])* determinant
-                
-    #             # Row 2
-    #             new_array[0][1] = self.calc_2_by_2_determinant([b[0], b[2]],[c[0], c[2]]) * -1 * determinant
-    #             new_array[1][1] = self.calc_2_by_2_determinant([a[0], a[2]],[c[0],c[2]]) * determinant
-    #             new_array[2][1] = self.calc_2_by_2_determinant([a[0], a[2]],[b[0], b[2]]) * -1 * determinant 
-
-    #             # Row 3
-    #             new_array[0][2] = self.calc_2_by_2_determinant([b[0],b[1]],[c[0],c[1]]) * determinant
-    #             new_array[1][2] = self.calc_2_by_2_determinant([a[0],a[1]],[c[0],c[1]]) * -1 * determinant 
-    #             new_array[2][2] = self.calc_2_by_2_determinant([a[0],a[1]],[b[0],b[1]]) * determinant
-                
-                
-    #             self.speaker_inverse_bases.append([new_array[0], new_array[1], new_array[2]])
-    #         # var inverted_bases = self.calc_inverse_3_by_3(speaker_a, speaker_b, speaker_c)
-    #         else:
-    #             self.speaker_triplets[i][0] = -1
-    #             self.speaker_triplets[i][1] = -1
-    #             self.speaker_triplets[i][2] = -1
-    #         # self.speaker_inverse_bases.append([inverted_bases[0], inverted_bases[1], inverted_bases[2]])
-
-        
-
-    def calc_3_by_3_determinant(mut self, a: MFloat[4], b: MFloat[4], c: MFloat[4]) -> Float64:
-        from . import nan
-        var vec_a = a[0] * ((b[1] * c[2]) - (b[2] * c[1]))
-        var vec_b = a[1] * ((b[0] * c[2]) - (b[2] * c[0]))
-        var vec_c = a[2] * ((b[0] * c[1]) - (b[1] * c[0]))
-        var determinant = vec_a - vec_b + vec_c
-        
-        if determinant != 0:
-            return determinant
-        else:
-            return -100000
     
     @always_inline
     def calc_gain_factors(mut self, source_vec: MFloat[4], source_az: Float64, source_ht: Float64):
