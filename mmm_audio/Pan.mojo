@@ -920,13 +920,11 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
         for i in range(len(self.speaker_triplets)):
 
             
-            var speaker_a_vector = self.speaker_inverse_bases[i][0] 
-            var speaker_b_vector = self.speaker_inverse_bases[i][1] 
-            var speaker_c_vector = self.speaker_inverse_bases[i][2]
+            
 
-            var speaker_a_product = source_vec[0] * speaker_a_vector
-            var speaker_b_product = source_vec[1] * speaker_b_vector 
-            var speaker_c_product = source_vec[2] * speaker_c_vector
+            var speaker_a_product = source_vec[0] * self.speaker_inverse_bases[i][0]
+            var speaker_b_product = source_vec[1] * self.speaker_inverse_bases[i][1]
+            var speaker_c_product = source_vec[2] * self.speaker_inverse_bases[i][2]
             
 
 
