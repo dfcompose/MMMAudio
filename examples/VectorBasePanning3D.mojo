@@ -45,10 +45,10 @@ struct VectorBasePanning3D(Movable, Copyable):
             MFloat[2](0.0, -0.5 * pi),
             MFloat[2](0.0, 0.5 * pi)
         ]
-        self.vbap = VBAP3D[5, 8, DType.float16](speaker_array)
+        self.vbap = VBAP3D[5, 8, DType.float64](speaker_array)
 
         
-    def next(mut self) -> MFloat[16]:
+    def next(mut self) -> MFloat[8]:
         
         comptime two_pi = 2 * pi
 
