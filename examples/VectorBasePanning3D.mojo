@@ -1,5 +1,5 @@
 from mmm_audio import *
-
+from std.time import perf_counter
 # THE SYNTH
 
 
@@ -13,7 +13,7 @@ struct VectorBasePanning3D(Movable, Copyable):
     var wsl: Int
     var pos: List[Float64]
     var mouse: Bool
-    var vbap: VBAP3D[5, 8]
+    var vbap: VBAP3D[5, 8, DType.float16]
     def __init__(out self, world: World):
         self.world = world
         self.dust = Dust[1](world)
@@ -45,7 +45,7 @@ struct VectorBasePanning3D(Movable, Copyable):
             MFloat[2](0.0, -0.5 * pi),
             MFloat[2](0.0, 0.5 * pi)
         ]
-        self.vbap = VBAP3D[5, 8](speaker_array)
+        self.vbap = VBAP3D[5, 8, DType.float16](speaker_array)
 
         
     def next(mut self) -> MFloat[8]:
@@ -65,17 +65,17 @@ struct VectorBasePanning3D(Movable, Copyable):
             var y = linlin(self.world[].mouse_y(), 0.0, 1.0, -0.5 * pi, 0.5 * pi)
             self.az = x
             self.ht = y
-        # self.world[].print("Hello?")
+        
         var sig = self.dust.next(10, 40) * 0.5
         sig = self.filt.bpf(sig, 1200, 10.0, 1.0)
 
-        # if self.messenger.notify_update("ht", self.ht):
-        #    _ = self.vbap.next(sig, self.az, self.ht)
+        
+        
         
 
         var out = self.vbap.next(sig, self.az, self.ht)
-        # var out = MFloat[8](0.0)
-        # self.world[].print(out)
+        
+        
         
         return out * 0.5
 
