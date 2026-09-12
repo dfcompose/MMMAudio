@@ -744,14 +744,14 @@ struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
 from std.python import PythonObject
 from std.python import Python
 
-
-struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
+struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType = DType.float64](Movable, Copyable):
     """
     An implementation of 3D Vector Base Amplitude Panning.
 
     Parameters:
         num_speakers: The total number of speakers in the speaker array.
         simd_out_size: The SIMD vector out. Must be a power of two and greater than or equal to the number of speakers.
+        panning_resolution: Sets the panning resolution to either 64bit (default) or 16bit floats. 16bit floats increase performance at the cost of some ability to localize.
     """
     var speaker_triplets: List[Array[Int, 3]]
     var speaker_unit_vectors: Array[MFloat[4], Self.num_speakers]
@@ -847,12 +847,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
                 
                 self.speaker_triplets.append([first, second, third])
         
-                                       
-        
-                                       
-
-            
-            print("Speaker triplets calculated successfully")
+            # print("Speaker triplets calculated successfully")
         except ImportError:
             print("Error importing scipy ConvexHull")
             pass
@@ -890,7 +885,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
 
     
     @always_inline
-    def calc_gain_factors(mut self, source_vec: MFloat[4], source_az: Float64, source_ht: Float64):
+    def calc_gain_factors(mut self, source_vec: SIMD[self.panning_resolution, 4], source_az: Float64, source_ht: Float64):
         """
         Internal method used for calculating gain factors of speaker pairs.
 
@@ -899,7 +894,8 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
             source_az: The azimuth position of the source in radians.
             source_ht: The height of the source in radians.
         """
-    
+        
+        
         for speaker_triplet in self.speaker_triplets:
 
             if speaker_triplet[0] != -1:
