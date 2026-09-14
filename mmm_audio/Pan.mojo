@@ -765,6 +765,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
     var gain_factors: MFloat[Self.simd_out_size]
     var active_gain_factors: MFloat[4]
     var speaker_positions: Array[MFloat[2], Self.num_speakers]
+    var active_index: Int 
     # var num_speakers: Int = num_speakers
 
     def __init__(out self, speaker_positions: Array[MFloat[2], Self.num_speakers],):
@@ -790,8 +791,9 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
         self.active_gain_factors = MFloat[4](0.0)
         self.speaker_positions = speaker_positions.copy()
         self.gain_factors = MFloat[self.simd_out_size](0.0)
-
+        self.active_index = 0
         self.speaker_unit_vectors = self.calc_speaker_unit_vectors()
+        
         
         # print("Unit vectors: ", self.speaker_unit_vectors)
         try:
@@ -825,7 +827,8 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
                     comptime if self.panning_resolution == DType.float64:
                         
                         bases.append(np.linalg.pinv(mat))
-                    elif self.panning_resolution == DType.float16:
+                    # elif self.panning_resolution == DType.float16:
+                    else:
                         # print(mat, np.linalg.transpose(np.linalg.pinv(mat)))
                         bases.append(np.linalg.pinv(mat).T)
 
@@ -939,11 +942,11 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
                     return
         
         
-        var active_index : Int = 0    
+        var smallest_gain = Float64(-10000.0).cast[self.panning_resolution]()
         
-        var largest_small_gain = 0
+        
         for i in range(len(self.speaker_triplets)):
-
+        
             
             
             comptime if self.panning_resolution == DType.float64:
@@ -956,67 +959,47 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
                 self.potential_gain_factors[i][0] = speaker_a_product[0] + speaker_b_product[0] + speaker_c_product[0]
                 self.potential_gain_factors[i][1] = speaker_a_product[1] + speaker_b_product[1] + speaker_c_product[1]
                 self.potential_gain_factors[i][2] = speaker_a_product[2] + speaker_b_product[2] + speaker_c_product[2]
-                
-                # = SIMD[self.panning_resolution, 4](
-                #     speaker_a_product[0] + speaker_b_product[0] + speaker_c_product[0],
-                #     speaker_a_product[1] + speaker_b_product[1] + speaker_c_product[1],
-                #     speaker_a_product[2] + speaker_b_product[2] + speaker_c_product[2],
-                #     0.0
-                # )
-            
                  
             else:
+
+                self.potential_gain_factors[i][0] = (source_vec * self.speaker_inverse_bases[i][0]).reduce_add() 
+                self.potential_gain_factors[i][1] = (source_vec * self.speaker_inverse_bases[i][1]).reduce_add() 
+                self.potential_gain_factors[i][2] = (source_vec * self.speaker_inverse_bases[i][2]).reduce_add() 
                 
-                # var speaker_a_product = source_vec * self.speaker_inverse_bases[i][0]
-                # var speaker_b_product = source_vec * self.speaker_inverse_bases[i][1] 
-                # var speaker_c_product = source_vec * self.speaker_inverse_bases[i][2]
-                
-                self.potential_gain_factors[i][0] = (source_vec * self.speaker_inverse_bases[i][0]).reduce_add() # speaker_a_product.reduce_add()
-                self.potential_gain_factors[i][1] = (source_vec * self.speaker_inverse_bases[i][1]).reduce_add() # speaker_b_product.reduce_add()
-                self.potential_gain_factors[i][2] = (source_vec * self.speaker_inverse_bases[i][2]).reduce_add() #speaker_c_product.reduce_add()
-
-
-
-                # self.potential_gain_factors[i] = SIMD[self.panning_resolution, 4](
-                #     speaker_a_product.reduce_add(),
-                #     speaker_b_product.reduce_add(),
-                #     speaker_c_product.reduce_add(),
-                #     0.0
-                # )
                 pass
             
-            var smallest_gain = min(self.potential_gain_factors[i][0], self.potential_gain_factors[i][1], self.potential_gain_factors[i][2])
+            
             
             if self.potential_gain_factors[i].gt(0.0):#[0] > 0.0 and self.potential_gain_factors[i][1] > 0.0 and self.potential_gain_factors[i][2] > 0.0:
-                active_index = i
+                self.active_index = i
                 
-                var scaled_gains = self.potential_gain_factors[active_index] / (sqrt((self.potential_gain_factors[active_index] * self.potential_gain_factors[active_index]).reduce_add()))
-                self.active_triplet[0] = self.speaker_triplets[active_index][0]
-                self.active_triplet[1] = self.speaker_triplets[active_index][1]
-                self.active_triplet[2] = self.speaker_triplets[active_index][2]
+                var scaled_gains = self.potential_gain_factors[self.active_index] / (sqrt((self.potential_gain_factors[self.active_index] * self.potential_gain_factors[self.active_index]).reduce_add()))
+                self.active_triplet[0] = self.speaker_triplets[self.active_index][0]
+                self.active_triplet[1] = self.speaker_triplets[self.active_index][1]
+                self.active_triplet[2] = self.speaker_triplets[self.active_index][2]
                 
                 self.active_gain_factors = scaled_gains.cast[DType.float64]()
                 
                 return
 
-            elif smallest_gain > min(self.potential_gain_factors[largest_small_gain][0], self.potential_gain_factors[largest_small_gain][1], self.potential_gain_factors[largest_small_gain][2]):
-                largest_small_gain = i
-                active_index = i
+            elif self.potential_gain_factors[i].reduce_min() < smallest_gain:#min(self.potential_gain_factors[largest_small_gain][0], self.potential_gain_factors[largest_small_gain][1], self.potential_gain_factors[largest_small_gain][2])):
+                
+                self.active_index = i
         
         
         # Handle all <= 0 values gracefully. Occurs when a source vector points too far from an array.
-        if self.potential_gain_factors[active_index][0] <= 0.0 and self.potential_gain_factors[active_index][1] <= 0.0 and self.potential_gain_factors[active_index][2] <= 0.0:
+        if self.potential_gain_factors[self.active_index].le(0.0):#[0] <= 0.0 and self.potential_gain_factors[self.active_index][1] <= 0.0 and self.potential_gain_factors[self.active_index][2] <= 0.0:
             return
         
         for i in range(3):
-            if self.potential_gain_factors[active_index][i] < 0.0:
-                self.potential_gain_factors[active_index][i] = 0.0
+            if self.potential_gain_factors[self.active_index][i] < 0.0:
+                self.potential_gain_factors[self.active_index][i] = 0.0
 
-        self.active_triplet[0] = self.speaker_triplets[active_index][0]
-        self.active_triplet[1] = self.speaker_triplets[active_index][1]
-        self.active_triplet[2] = self.speaker_triplets[active_index][2]
+        self.active_triplet[0] = self.speaker_triplets[self.active_index][0]
+        self.active_triplet[1] = self.speaker_triplets[self.active_index][1]
+        self.active_triplet[2] = self.speaker_triplets[self.active_index][2]
         
-        var scaled_gains = self.potential_gain_factors[active_index] / (sqrt((self.potential_gain_factors[active_index] * self.potential_gain_factors[active_index]).reduce_add()))
+        var scaled_gains = self.potential_gain_factors[self.active_index] / (sqrt((self.potential_gain_factors[self.active_index] * self.potential_gain_factors[self.active_index]).reduce_add()))
         self.active_gain_factors = scaled_gains.cast[DType.float64]()
     
     @always_inline
@@ -1030,17 +1013,17 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
             ht: The height of the source in radians.
         
         """
-        from std.time import perf_counter
+        
 
         comptime two_pi = 2 * pi
         
        
         if az != self.prev_az or ht != self.prev_ht:
             
-                
-            var source_vector = SIMD[self.panning_resolution, 4]((cos(az) * cos(ht)).cast[self.panning_resolution](), (cos(ht) * sin(az)).cast[self.panning_resolution](), sin(ht).cast[self.panning_resolution](), 0.0)
             
-            self.calc_gain_factors(source_vector, az, ht)
+            var source_vector = SIMD[DType.float64, 4](cos(az) * cos(ht), cos(ht) * sin(az), sin(ht), 0.0)
+            
+            self.calc_gain_factors(source_vector.cast[self.panning_resolution](), az, ht)
             
             # print(self.active_triplet, self.active_gain_factors)
             self.prev_az = az
