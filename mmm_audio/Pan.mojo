@@ -744,7 +744,7 @@ from std.python import PythonObject
 from std.python import Python
 from std.utils.numerics import isnan
 
-struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType = DType.float64](Movable, Copyable):
+struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType = DType.float64, transpose: Bool = False](Movable, Copyable):
     """
     An implementation of 3D Vector Base Amplitude Panning.
 
@@ -824,7 +824,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
 
                 if not check:
                     triplets.append(triplet)
-                    comptime if self.panning_resolution == DType.float64:
+                    comptime if self.transpose:#self.panning_resolution == DType.float64:
                         
                         bases.append(np.linalg.pinv(mat))
                     # elif self.panning_resolution == DType.float16:
@@ -949,7 +949,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
         
             
             
-            comptime if self.panning_resolution == DType.float64:
+            comptime if self.transpose:#self.panning_resolution == DType.float64:
                 var speaker_a_product = source_vec[0] * self.speaker_inverse_bases[i][0]
                 var speaker_b_product = source_vec[1] * self.speaker_inverse_bases[i][1]
                 var speaker_c_product = source_vec[2] * self.speaker_inverse_bases[i][2]
@@ -970,7 +970,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
             
             
             
-            if self.potential_gain_factors[i].gt(0.0):#[0] > 0.0 and self.potential_gain_factors[i][1] > 0.0 and self.potential_gain_factors[i][2] > 0.0:
+            if self.potential_gain_factors[i][0] > 0.0 and self.potential_gain_factors[i][1] > 0.0 and self.potential_gain_factors[i][2] > 0.0:
                 self.active_index = i
                 
                 var scaled_gains = self.potential_gain_factors[self.active_index] / (sqrt((self.potential_gain_factors[self.active_index] * self.potential_gain_factors[self.active_index]).reduce_add()))
@@ -988,7 +988,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
         
         
         # Handle all <= 0 values gracefully. Occurs when a source vector points too far from an array.
-        if self.potential_gain_factors[self.active_index].le(0.0):#[0] <= 0.0 and self.potential_gain_factors[self.active_index][1] <= 0.0 and self.potential_gain_factors[self.active_index][2] <= 0.0:
+        if self.potential_gain_factors[self.active_index][0] <= 0.0 and self.potential_gain_factors[self.active_index][1] <= 0.0 and self.potential_gain_factors[self.active_index][2] <= 0.0:
             return
         
         for i in range(3):
