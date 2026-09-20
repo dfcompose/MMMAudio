@@ -528,7 +528,7 @@ def dbap3D[
 
 
 
-struct VBAP2D(Movable, Copyable):
+struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
     """
     An implementation of VBAP (Vector Base Amplitude Panning). Pans a mono sample to a 2D array of N speakers of arbitrary positions in radians that are equidistant from the listener.
     For more on VBAP see the paper written by Ville Pulkki:
@@ -538,7 +538,6 @@ struct VBAP2D(Movable, Copyable):
     var speaker_unit_vectors: List[MFloat[2]]
     var speaker_pairs: List[List[Int]]
     var speaker_inverse_bases: List[Array[MFloat[2], 2]]
-    var num_speakers: Int
     
     
     def __init__(out self, speaker_positions: List[Float64]):
@@ -548,7 +547,6 @@ struct VBAP2D(Movable, Copyable):
         Args:
             speaker_positions: A List of azimuth values in radians. The order of speakers given corresponds to the output channels ie. The speaker defined as the first element of the list will output on channel 0.
         """
-        self.num_speakers = len(speaker_positions)
         self.speaker_positions = []
         self.speaker_unit_vectors = []
         self.speaker_pairs = []
@@ -711,16 +709,13 @@ struct VBAP2D(Movable, Copyable):
         var scaled_gains = gain_factors[active_index] / (sqrt((gain_factors[active_index] * gain_factors[active_index]).reduce_add()))
         active_gains = scaled_gains
     
-    def next[simd_out_size:Int](mut self, sample: Float64, az: Float64) -> MFloat[simd_out_size]:
+    def next(mut self, sample: Float64, az: Float64) -> MFloat[self.simd_out_size]:
         """
         Pans a mono sample based on a target azimuth.
 
         Args:
             sample: A mono sample to pan.
             az: The azimuth in radians.
-        
-        Parameters:
-            simd_out_size: The size of the output float. Must be larger than the number of speakers in the array and a power of two.
         """
         var active_speaker_pair : List[Int] = [0, 1]
         var active_gain_factors = MFloat[2](0.5)
@@ -728,7 +723,7 @@ struct VBAP2D(Movable, Copyable):
         
         self.calc_gain_factors(source_vector, active_speaker_pair, active_gain_factors, az)
 
-        var gain_factors = MFloat[simd_out_size](0.0)
+        var gain_factors = MFloat[self.simd_out_size](0.0)
     
         gain_factors[Int(active_speaker_pair[0])] = active_gain_factors[0]
         gain_factors[Int(active_speaker_pair[1])] = active_gain_factors[1]
@@ -768,7 +763,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
     var active_index: Int 
     # var num_speakers: Int = num_speakers
 
-    def __init__(out self, speaker_positions: Array[MFloat[2], Self.num_speakers],):
+    def __init__(out self, speaker_positions: Array[MFloat[2], Self.num_speakers]):
         """
         An implementation of VBAP.
 
@@ -824,7 +819,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
 
                 if not check:
                     triplets.append(triplet)
-                    comptime if self.transpose:#self.panning_resolution == DType.float64:
+                    comptime if self.transpose: #self.panning_resolution == DType.float64:
                         
                         bases.append(np.linalg.pinv(mat))
                     # elif self.panning_resolution == DType.float16:
@@ -949,7 +944,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
         
             
             
-            comptime if self.transpose:#self.panning_resolution == DType.float64:
+            comptime if self.transpose: #self.panning_resolution == DType.float64:
                 var speaker_a_product = source_vec[0] * self.speaker_inverse_bases[i][0]
                 var speaker_b_product = source_vec[1] * self.speaker_inverse_bases[i][1]
                 var speaker_c_product = source_vec[2] * self.speaker_inverse_bases[i][2]
