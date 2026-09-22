@@ -534,26 +534,25 @@ struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
     For more on VBAP see the paper written by Ville Pulkki:
     https://www.audiolabs-erlangen.de/media/pages/resources/aps-w23/papers/935eb793db-1663358804/sap_Pulkki1997.pdf .
     """
-    var speaker_positions: List[Float64]
+    var speaker_positions: Array[Float64, Self.num_speakers]
     var speaker_unit_vectors: List[MFloat[2]]
     var speaker_pairs: List[List[Int]]
     var speaker_inverse_bases: List[Array[MFloat[2], 2]]
     
     
-    def __init__(out self, speaker_positions: List[Float64]):
+    def __init__(out self, imm speaker_positions: Array[Float64, Self.num_speakers]):
         """
         Initializes an instance of VBAP2D.
 
         Args:
             speaker_positions: A List of azimuth values in radians. The order of speakers given corresponds to the output channels ie. The speaker defined as the first element of the list will output on channel 0.
         """
-        self.speaker_positions = []
+        
         self.speaker_unit_vectors = []
         self.speaker_pairs = []
         self.speaker_inverse_bases = []
         
-        for speaker_position in speaker_positions:
-            self.speaker_positions.append(speaker_position)
+        self.speaker_positions = speaker_positions.copy()
 
         self.speaker_unit_vectors = self.calc_speaker_unit_vectors()
         self.speaker_pairs = self.calc_speaker_pairs()
@@ -609,7 +608,7 @@ struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
 
         return inverse_bases^
 
-    def index_of(mut self, list: List[Float64], element: Float64) -> Int:
+    def index_of(mut self, list: Array[Float64, Self.num_speakers], element: Float64) -> Int:
         """
         Finds the index of the first appearance of an element in a list.
 

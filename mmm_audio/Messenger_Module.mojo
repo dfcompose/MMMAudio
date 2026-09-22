@@ -411,6 +411,37 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating trig message. Error: ", error)
         return False
 
+
+    def notify_callback[call_back: def(List[Float64]) capturing -> None](mut self, name: String)-> Bool:
+        """
+        Provide a callback function to call.
+        """
+        if self.world[].top_of_block():
+            try:
+                ref temp = self.world[].messenger_manager()
+                var opt = temp.get_floats(self.get_name_with_namespace(name)[])
+                if opt:
+                    call_back(opt.value().copy())
+                    return True
+            except error:
+                print("Error occurred while updating float list message. Error: ", error)
+        return False
+    
+    def update_callback[call_back: def(List[Float64]) capturing -> None](mut self, name: String):
+        """
+        Provide a callback function to call.
+        """
+        if self.world[].top_of_block():
+            try:
+                ref temp = self.world[].messenger_manager()
+                var opt = temp.get_floats(self.get_name_with_namespace(name)[])
+                if opt:
+                    call_back(opt.value().copy())
+                    
+            except error:
+                print("Error occurred while updating float list message. Error: ", error)
+        
+
 @doc_hidden
 struct BoolMessage(Movable, Copyable):
     var retrieved: Bool
