@@ -30,6 +30,7 @@ from .Windows_Module import *
 from .Windows_Module import kaiser_window
 from .constants import *
 from .functions import *
+from .waveshaper_functions import *
 from .FFT_Processes import *
 from .FFT_Functions import *
 from .ComplexFFTProcess_Module import *

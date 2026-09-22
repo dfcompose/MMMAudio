@@ -48,7 +48,7 @@ struct VectorBasePanning3D(Movable, Copyable):
         self.vbap = VBAP3D[5, 8, DType.float16](speaker_array)
 
         
-    def next(mut self) -> MFloat[8]:
+    def next(mut self) -> MFloat[16]:
         
         comptime two_pi = 2 * pi
 
@@ -61,8 +61,8 @@ struct VectorBasePanning3D(Movable, Copyable):
      
         # comptime offset = deg_to_rad(90)
         if self.mouse:
-            var x = linlin(self.world[].mouse_x(), 0.0, 1.0, -0.5 * pi, 0.5 * pi)
-            var y = linlin(self.world[].mouse_y(), 0.0, 1.0, -0.5 * pi, 0.5 * pi)
+            var x = linlin(self.world[].mouse_x(), 0.0, 1.0, -1.0 * pi, 1.0 * pi)
+            var y = linlin(self.world[].mouse_y(), 0.0, 1.0, -1.0 * pi, 1.0 * pi)
             self.az = x
             self.ht = y
         

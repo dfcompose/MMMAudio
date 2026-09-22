@@ -1,6 +1,7 @@
 from std.math import sqrt, floor, cos, pi, sin
 from std.sys import simd_width_of
 from std.algorithm import vectorize
+from std.python import Python
 from mmm_audio.constants import *
 from mmm_audio.functions import *
 from mmm_audio.MMMWorld_Module import Interp
@@ -282,7 +283,6 @@ def pan_az[num_speakers: Int = 2, simd_out_size: Int = 2, width: Float64 = 2.0, 
     var mask: MBool[2]
     var temp: MFloat[2]
 
-    # this needs to be checked
     for i in range(num_simd_pairs):
         var pos = (constant - MFloat[2](Float64(i*2), Float64(i*2+1))) * rwidth
         pos = (pos - frange * floor(rrange * pos)) * pi
@@ -310,7 +310,7 @@ def dbap2D[
         rolloff: Float64 = 6
     ) -> MFloat[simd_out_size]:
     """
-    Implements DBAP (Distance Based Amplitude Panning). Pans a mono sample to N speakers of arbitrary positions in meters.
+    Implements 2D DBAP (Distance Based Amplitude Panning). Pans a mono sample to N speakers of arbitrary positions in meters.
     For more on DBAP see the paper written by Trond Lossius, Pascal Baltazar, and Theo de la Hague.
     https://jamoma.org/publications/attachments/icmc2009-dbap-rev1.pdf .
 
@@ -332,8 +332,8 @@ def dbap2D[
     comptime assert num_speakers <= simd_out_size, "num_speakers must be less than or equal to simd_out_size for dbap2D"
     comptime assert simd_out_size & (simd_out_size - 1) == 0, "simd_out_size must be a power of two for dbap2D"
 
-    
     # Calculates the covariance of speaker distances 
+
     def variance_of_dists[
         comp_num_speakers: Int, 
         comp_speaker_positions: Array[MFloat[2], 
@@ -598,12 +598,12 @@ struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
             var speaker_a = self.speaker_unit_vectors[self.speaker_pairs[i][0]] #[-2, 1]  [a, b]
             var speaker_b = self.speaker_unit_vectors[self.speaker_pairs[i][1]] #[1, 2]   [c, d]
             
-            var determinate = (speaker_a[0] * speaker_b[1]) - (speaker_a[1] * speaker_b[0]) # ad - bc : -2 * 2 - 1 * 1 = -5
+            var determinant = (speaker_a[0] * speaker_b[1]) - (speaker_a[1] * speaker_b[0]) # ad - bc : -2 * 2 - 1 * 1 = -5
 
             var inverted_a = MFloat[2](speaker_b[1], -1 * speaker_a[1]) # [d, -b] = [2, -1]
             var inverted_b = MFloat[2](-1 * speaker_b[0], speaker_a[0]) # [-c, a] = [-1, -2]
-            inverse_bases[i][0] = inverted_a/determinate
-            inverse_bases[i][1] = inverted_b/determinate
+            inverse_bases[i][0] = inverted_a/determinant
+            inverse_bases[i][1] = inverted_b/determinant
 
 
         return inverse_bases^
@@ -634,7 +634,7 @@ struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
         Returns:
             A list of speaker pairs.
         """
-        var speaker_pairs = List[List[Int]](length=self.num_speakers, fill=[0,0])
+        var speaker_pairs = [[0 for _ in range(2)] for _ in range(self.num_speakers)]
         var unsorted_array = self.speaker_positions.copy()
         var sorted_array = self.speaker_positions.copy()
         sort(sorted_array)
@@ -659,16 +659,17 @@ struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
         for speaker_pair in self.speaker_pairs:
 
             if source_az == self.speaker_positions[speaker_pair[0]]:
-                active_pair = speaker_pair.copy()
+                for i in range(2):
+                    active_pair[i] = speaker_pair[i]
                 active_gains[0] = 1.0
                 active_gains[1] = 0.0
                 
                 return
             elif source_az == self.speaker_positions[speaker_pair[1]]:
-                active_pair = speaker_pair.copy()
+                for i in range(2):
+                    active_pair[i] = speaker_pair[i]
                 active_gains[0] = 0.0
                 active_gains[1] = 1.0
-                
                 return
         
         
@@ -698,19 +699,25 @@ struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
             if gain_factors[i][0] >= 0.0 and gain_factors[i][1] >= 0.0:
                 active_index = i 
                 var scaled_gains = gain_factors[active_index] / (sqrt((gain_factors[active_index] * gain_factors[active_index]).reduce_add()))
-                active_gains = scaled_gains
+                active_gains[0] = scaled_gains[0]
+                active_gains[1] = scaled_gains[1]
                 break
             elif smallest_gain > min(gain_factors[largest_small_gain][0], gain_factors[largest_small_gain][1]):
                 largest_small_gain = i 
                 active_index = i
 
-        active_pair = self.speaker_pairs[active_index].copy()
+        for i in range(2):
+            active_pair[i] = self.speaker_pairs[active_index][i]
         var scaled_gains = gain_factors[active_index] / (sqrt((gain_factors[active_index] * gain_factors[active_index]).reduce_add()))
-        active_gains = scaled_gains
+        active_gains[0] = scaled_gains[0]
+        active_gains[1] = scaled_gains[1]
     
     def next(mut self, sample: Float64, az: Float64) -> MFloat[self.simd_out_size]:
         """
         Pans a mono sample based on a target azimuth.
+
+        Parameters:
+            simd_out_size: Number of channels of the SIMD output vector. Must be a power of two that is at least as large as num_speakers.
 
         Args:
             sample: A mono sample to pan.
@@ -1003,9 +1010,11 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
 
         Args:
             sample: A mono sample to pan.
-            az: The azimuth in radians.
-            ht: The height of the source in radians.
-        
+            az: The azimuth in radians. 0.0 is directly ahead, positive values move clockwise.
+            ht: The height of the source in radians. 0.0 is on the same horizontal plane as the listener's ears. Positve values are above the listener, negative values are below. From -1pi radians (directly below) to 1pi radians (directly above).
+
+        Returns:
+            An MFloat of the panned sample. 
         """
         
 
