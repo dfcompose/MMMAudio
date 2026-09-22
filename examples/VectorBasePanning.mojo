@@ -57,11 +57,11 @@ struct VectorBasePanning(Movable, Copyable):
         sig = self.filt.bpf(sig, 1200, 10.0, 1.0)
 
         # 4 speaker setup
-        # var pan = self.vbap_4.next[4](sig, self.az)
-        # var out = MFloat[max_simd](pan[0], pan[1], pan[2], pan[3], 0.0, 0.0, 0.0, 0.0)
+        var pan = self.vbap_4.next[4](sig, self.az)
+        var out = MFloat[max_simd](pan[0], pan[1], pan[2], pan[3], 0.0, 0.0, 0.0, 0.0)
         
         # 7 speaker setup, note that the simd_out_size must be a power of two and larger than the speaker array size.
-        var out = self.vbap_7.next[8](sig, self.az)
+        # var out = self.vbap_7.next[8](sig, self.az)
 
         # output for a 7.1 surround sound setup
         return MFloat[8](out[0], out[1], out[2], 0.0,out[3], out[4], out[5], out[6]) * 0.5
