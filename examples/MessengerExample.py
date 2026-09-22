@@ -50,4 +50,8 @@ a.send_float("tone_1.freq",midicps(74))
 a.send_bool("tone_0.gate",False)
 a.send_bool("tone_1.gate",False)
 
+
+
+a.send_floats("callback", [1.0, 2.0, 3.0])
+
 a.stop_audio()
