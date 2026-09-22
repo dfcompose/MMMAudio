@@ -407,7 +407,7 @@ struct Messenger(Copyable, Movable):
         """
         Get notified if a 'send_floats' message is received and execute a provided callback funciton.
 
-        Params:
+        Parameters:
             call_back: A callback function that takes a 'List[Float64]' as its argument.
         
         Args:
@@ -432,7 +432,7 @@ struct Messenger(Copyable, Movable):
         """
         Executes a given callback function with a list of floats sent from Python.
 
-        Params:
+        Parameters:
             call_back: A callback function that takes a 'List[Float64]' as its argument.
         
         Args:
@@ -454,7 +454,7 @@ struct Messenger(Copyable, Movable):
         """
         Get notified if a 'send_ints' message is received and execute a provided callback funciton.
 
-        Params:
+        Parameters:
             call_back: A callback function that takes a 'List[Int]' as its argument.
         
         Args:
@@ -479,7 +479,7 @@ struct Messenger(Copyable, Movable):
         """
         Executes a given callback function with a list of ints sent from Python.
 
-        Params:
+        Parameters:
             call_back: A callback function that takes a 'List[Int]' as its argument.
         
         Args:
@@ -500,7 +500,7 @@ struct Messenger(Copyable, Movable):
         """
         Get notified if a 'send_strings' message is received and execute a provided callback funciton.
 
-        Params:
+        Parameters:
             call_back: A callback function that takes a 'List[String]' as its argument.
         
         Args:
@@ -525,7 +525,7 @@ struct Messenger(Copyable, Movable):
         """
         Executes a given callback function with a list of strings sent from Python.
 
-        Params:
+        Parameters:
             call_back: A callback function that takes a 'List[String]' as its argument.
         
         Args:
