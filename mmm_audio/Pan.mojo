@@ -719,6 +719,9 @@ struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
         Args:
             sample: A mono sample to pan.
             az: The azimuth in radians.
+        
+        Returns:
+            An MFLoat of the panned sample.
         """
         var active_speaker_pair : List[Int] = [0, 1]
         var active_gain_factors = MFloat[2](0.5)
