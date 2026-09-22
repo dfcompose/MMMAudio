@@ -743,26 +743,25 @@ struct VBAP2D[num_speakers: Int = 4, simd_out_size: Int = 4](Movable, Copyable):
 
 from std.python import PythonObject
 from std.python import Python
-from std.utils.numerics import isnan
 
-struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType = DType.float64](Movable, Copyable):
+
+struct VBAP3D[num_speakers: Int, simd_out_size: Int](Movable, Copyable):
     """
     An implementation of 3D Vector Base Amplitude Panning.
 
     Parameters:
         num_speakers: The total number of speakers in the speaker array.
         simd_out_size: The SIMD vector out. Must be a power of two and greater than or equal to the number of speakers.
-        panning_resolution: Sets the panning resolution to either 64bit (default) or 16bit floats. 16bit floats increase performance at the cost of some ability to localize.
     """
     var speaker_triplets: List[Array[Int, 3]]
     var speaker_unit_vectors: Array[MFloat[4], Self.num_speakers]
     
-    var speaker_inverse_bases: Array[Array[SIMD[Self.panning_resolution, 4], 3], Self.num_speakers * 2]
+    var speaker_inverse_bases: Array[Array[MFloat[4], 3], Self.num_speakers * 2]
     
     var active_triplet: Array[Int, 3]
     var prev_az: Float64
     var prev_ht: Float64
-    var potential_gain_factors: Array[SIMD[Self.panning_resolution, 4], Self.num_speakers * 2]
+    var potential_gain_factors: Array[MFloat[4], Self.num_speakers * 2]
     var gain_factors: MFloat[Self.simd_out_size]
     var active_gain_factors: MFloat[4]
     var speaker_positions: Array[MFloat[2], Self.num_speakers]
@@ -784,8 +783,8 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
         self.speaker_triplets : List[Array[Int,3]] = []
         self.speaker_unit_vectors = Array[MFloat[4], self.num_speakers](fill=MFloat[4](0.0))
         
-        self.speaker_inverse_bases = Array[Array[SIMD[self.panning_resolution, 4], 3], self.num_speakers * 2](fill=[SIMD[self.panning_resolution, 4](0.0),SIMD[self.panning_resolution, 4](0.0), SIMD[self.panning_resolution, 4](0.0)])
-        self.potential_gain_factors = Array[SIMD[self.panning_resolution, 4], self.num_speakers * 2](fill=SIMD[self.panning_resolution, 4](0.0))
+        self.speaker_inverse_bases = Array[Array[MFloat[4], 3], self.num_speakers * 2](fill=[MFloat[4](0.0),MFloat[4](0.0), MFloat[4](0.0)])
+        self.potential_gain_factors = Array[MFloat[4], self.num_speakers * 2](fill=MFloat[4](0.0))
         self.active_triplet = [0,1,2]
         self.prev_az = 7
         self.prev_ht = 7
@@ -799,9 +798,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
         # print("Unit vectors: ", self.speaker_unit_vectors)
         try:
             
-            comptime if self.panning_resolution != DType.float64 and self.panning_resolution != DType.float16:
-                raise Error("panning_resolution must be either DType.float64 or DType.float16")
-            
+           
             scipy = Python.import_module("scipy.spatial")
             np = Python.import_module("numpy")
             py_list = Python.list()
@@ -823,18 +820,11 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
 
                 ## Determines if the matrix is coplanar with origin. If so, the speakers are removed.
                 var check = mat[0][2] == 0.0 and mat[1][2] == 0.0 and mat[2][2] == 0.0
-                ## Determines if the matrix is coplanar with origin. If so, the speakers are removed.
-                var check = mat[0][2] == 0.0 and mat[1][2] == 0.0 and mat[2][2] == 0.0
-
+                
                 if not check:
                     triplets.append(triplet)
-                    comptime if self.panning_resolution == DType.float64:
-                        
-                        bases.append(np.linalg.pinv(mat))
-                    # elif self.panning_resolution == DType.float16:
-                    else:
-                        # print(mat, np.linalg.transpose(np.linalg.pinv(mat)))
-                        bases.append(np.linalg.pinv(mat).T)
+                    
+                    bases.append(np.linalg.pinv(mat).T)
 
 
 
@@ -850,7 +840,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
                 for j in range(len(targ_inv)):
                     var vec = targ_inv[j]
                     
-                    self.speaker_inverse_bases[i][j] = SIMD[self.panning_resolution, 4](Float64(py=vec[0]).cast[self.panning_resolution](), Float64(py=vec[1]).cast[self.panning_resolution](), Float64(py=vec[2]).cast[self.panning_resolution](), 0.0)
+                    self.speaker_inverse_bases[i][j] = MFloat[4](Float64(py=vec[0]), Float64(py=vec[1]), Float64(py=vec[2]), 0.0)
                     
                         
                         
@@ -858,25 +848,16 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
                 self.speaker_triplets.append([first, second, third])
         
                                        
-
-            
-            # print("Speaker triplets calculated successfully")
         
                                        
 
             
-            # print("Speaker triplets calculated successfully")
+            print("Speaker triplets calculated successfully")
         except ImportError:
-            # print("Error importing scipy Delaunay")
+            print("Error importing scipy ConvexHull")
             pass
         
         
-        
-      
-        # print(self.speaker_triplets)
-        # print("Inverse bases ", self.speaker_inverse_bases)
-        # print(self.speaker_triplets)
-        # print("Inverse bases ", self.speaker_inverse_bases)
         
     
     def calc_speaker_unit_vectors(mut self) -> Array[MFloat[4], Self.num_speakers]:
@@ -889,9 +870,9 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
         var speaker_vectors = Array[MFloat[4], self.num_speakers](fill=MFloat[4](0.0))
         
 
-        for i in range(self.num_speakers): # cos(az) * cos(ht), sin(ht) * cos(az), sin(ht)
+        for i in range(self.num_speakers): 
             var new_vec = MFloat[4](cos(self.speaker_positions[i][0]) * cos(self.speaker_positions[i][1]), cos(self.speaker_positions[i][1]) * sin(self.speaker_positions[i][0]), sin(self.speaker_positions[i][1]), 0)
-            # new_vec = self.normalize_vector(new_vec)
+            
             speaker_vectors[i][0] = new_vec[0]
             speaker_vectors[i][1] = new_vec[1]
             speaker_vectors[i][2] = new_vec[2]
@@ -909,7 +890,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
 
     
     @always_inline
-    def calc_gain_factors(mut self, source_vec: SIMD[self.panning_resolution, 4], source_az: Float64, source_ht: Float64):
+    def calc_gain_factors(mut self, source_vec: MFloat[4], source_az: Float64, source_ht: Float64):
         """
         Internal method used for calculating gain factors of speaker pairs.
 
@@ -952,35 +933,21 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
                     return
         
         
-        var smallest_gain = Float64(-10000.0).cast[self.panning_resolution]()
+        var smallest_gain = -10000.0
         
         
         for i in range(len(self.speaker_triplets)):
         
-            
-            
-            comptime if self.panning_resolution == DType.float64:
-                var speaker_a_product = source_vec[0] * self.speaker_inverse_bases[i][0]
-                var speaker_b_product = source_vec[1] * self.speaker_inverse_bases[i][1]
-                var speaker_c_product = source_vec[2] * self.speaker_inverse_bases[i][2]
-                
 
-
-                self.potential_gain_factors[i][0] = speaker_a_product[0] + speaker_b_product[0] + speaker_c_product[0]
-                self.potential_gain_factors[i][1] = speaker_a_product[1] + speaker_b_product[1] + speaker_c_product[1]
-                self.potential_gain_factors[i][2] = speaker_a_product[2] + speaker_b_product[2] + speaker_c_product[2]
-                 
-            else:
-
-                self.potential_gain_factors[i][0] = (source_vec * self.speaker_inverse_bases[i][0]).reduce_add() 
-                self.potential_gain_factors[i][1] = (source_vec * self.speaker_inverse_bases[i][1]).reduce_add() 
-                self.potential_gain_factors[i][2] = (source_vec * self.speaker_inverse_bases[i][2]).reduce_add() 
-                
-                pass
+            self.potential_gain_factors[i][0] = (source_vec * self.speaker_inverse_bases[i][0]).reduce_add() 
+            self.potential_gain_factors[i][1] = (source_vec * self.speaker_inverse_bases[i][1]).reduce_add() 
+            self.potential_gain_factors[i][2] = (source_vec * self.speaker_inverse_bases[i][2]).reduce_add() 
+            
+        
             
             
-            
-            if self.potential_gain_factors[i].gt(0.0):#[0] > 0.0 and self.potential_gain_factors[i][1] > 0.0 and self.potential_gain_factors[i][2] > 0.0:
+            var largest_small_gain = min(self.potential_gain_factors[i][0], self.potential_gain_factors[i][1], self.potential_gain_factors[i][2])
+            if self.potential_gain_factors[i][0] > 0.0 and self.potential_gain_factors[i][1] > 0.0 and self.potential_gain_factors[i][2] > 0.0:
                 self.active_index = i
                 
                 var scaled_gains = self.potential_gain_factors[self.active_index] / (sqrt((self.potential_gain_factors[self.active_index] * self.potential_gain_factors[self.active_index]).reduce_add()))
@@ -992,13 +959,13 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
                 
                 return
 
-            elif self.potential_gain_factors[i].reduce_min() < smallest_gain:#min(self.potential_gain_factors[largest_small_gain][0], self.potential_gain_factors[largest_small_gain][1], self.potential_gain_factors[largest_small_gain][2])):
-                
+            elif  smallest_gain < largest_small_gain:
+                smallest_gain = largest_small_gain
                 self.active_index = i
         
         
         # Handle all <= 0 values gracefully. Occurs when a source vector points too far from an array.
-        if self.potential_gain_factors[self.active_index].le(0.0):#[0] <= 0.0 and self.potential_gain_factors[self.active_index][1] <= 0.0 and self.potential_gain_factors[self.active_index][2] <= 0.0:
+        if self.potential_gain_factors[self.active_index][0] <= 0.0 and self.potential_gain_factors[self.active_index][1] <= 0.0 and self.potential_gain_factors[self.active_index][2] <= 0.0:
             return
         
         for i in range(3):
@@ -1035,9 +1002,7 @@ struct VBAP3D[num_speakers: Int, simd_out_size: Int, panning_resolution: DType =
             
             var source_vector = SIMD[DType.float64, 4](cos(az) * cos(ht), cos(ht) * sin(az), sin(ht), 0.0)
             
-            self.calc_gain_factors(source_vector.cast[self.panning_resolution](), az, ht)
-            
-            # print(self.active_triplet, self.active_gain_factors)
+            self.calc_gain_factors(source_vector, az, ht)
             self.prev_az = az
             self.prev_ht = ht
         
