@@ -13,7 +13,7 @@ struct VectorBasePanning3D(Movable, Copyable):
     var wsl: Int
     var pos: List[Float64]
     var mouse: Bool
-    var vbap: VBAP3D[5, 8, DType.float16]
+    var vbap: VBAP3D[5, 8]
     def __init__(out self, world: World):
         self.world = world
         self.dust = Dust[1](world)
@@ -45,7 +45,7 @@ struct VectorBasePanning3D(Movable, Copyable):
             MFloat[2](0.0, -0.5 * pi),
             MFloat[2](0.0, 0.5 * pi)
         ]
-        self.vbap = VBAP3D[5, 8, DType.float64](speaker_array)
+        self.vbap = VBAP3D[5, 8](speaker_array)
 
         
     def next(mut self) -> MFloat[8]:
