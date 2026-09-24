@@ -422,7 +422,7 @@ struct Messenger(Copyable, Movable):
                 ref temp = self.world[].messenger_manager()
                 var opt = temp.get_floats(self.get_name_with_namespace(name)[])
                 if opt:
-                    call_back(opt.value().copy())
+                    call_back(opt.value())
                     return True
             except error:
                 print("Error occurred while updating float list message. Error: ", error)
@@ -491,7 +491,7 @@ struct Messenger(Copyable, Movable):
                 ref temp = self.world[].messenger_manager()
                 var opt = temp.get_ints(self.get_name_with_namespace(name)[])
                 if opt:
-                    call_back(opt.value().copy())
+                    call_back(opt.value())
                     
             except error:
                 print("Error occurred while updating int list message. Error: ", error)
@@ -515,7 +515,7 @@ struct Messenger(Copyable, Movable):
                 ref temp = self.world[].messenger_manager()
                 var opt = temp.get_strings(self.get_name_with_namespace(name)[])
                 if opt:
-                    call_back(opt.value().copy())
+                    call_back(opt.value())
                     return True
             except error:
                 print("Error occurred while updating string list message. Error: ", error)
@@ -537,7 +537,7 @@ struct Messenger(Copyable, Movable):
                 ref temp = self.world[].messenger_manager()
                 var opt = temp.get_strings(self.get_name_with_namespace(name)[])
                 if opt:
-                    call_back(opt.value().copy())
+                    call_back(opt.value())
                     
             except error:
                 print("Error occurred while updating string list message. Error: ", error)
