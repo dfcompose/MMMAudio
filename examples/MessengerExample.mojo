@@ -92,7 +92,9 @@ struct MessengerExample(Copyable, Movable):
 
         
         def recv_floats(vals: List[Float64]) capturing -> None:
-            print("Received the following floats: ", vals)
+            for val in vals:
+                self.floats.append(val)
+            print("Appended the following floats to self.floats: ", vals, " self.floats is now holding: ", self.floats)
 
         self.m.update_callback[recv_floats]("callback")
 
