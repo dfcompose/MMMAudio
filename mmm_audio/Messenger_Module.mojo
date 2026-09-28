@@ -403,7 +403,7 @@ struct Messenger(Copyable, Movable):
         return False
 
 
-    def notify_callback[call_back: def(List[Float64]) capturing -> None](mut self, name: String)-> Bool:
+    def notify_address_callback[call_back: def(List[Float64]) capturing -> None](mut self, name: String)-> Bool:
         """
         Get notified if a 'send_floats' message is received and execute a provided callback funciton.
 
@@ -428,7 +428,7 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating float list message. Error: ", error)
         return False
     
-    def update_callback[call_back: def(List[Float64]) capturing -> None](mut self, name: String):
+    def adress_callback[call_back: def(List[Float64]) capturing -> None](mut self, name: String):
         """
         Executes a given callback function with a list of floats sent from Python.
 
@@ -450,7 +450,7 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating float list message. Error: ", error)
         
     
-    def notify_callback[call_back: def(List[Int]) capturing -> None](mut self, name: String)-> Bool:
+    def notify_address_callback[call_back: def(List[Int]) capturing -> None](mut self, name: String)-> Bool:
         """
         Get notified if a 'send_ints' message is received and execute a provided callback funciton.
 
@@ -475,7 +475,7 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating int list message. Error: ", error)
         return False
     
-    def update_callback[call_back: def(List[Int]) capturing -> None](mut self, name: String):
+    def adress_callback[call_back: def(List[Int]) capturing -> None](mut self, name: String):
         """
         Executes a given callback function with a list of ints sent from Python.
 
@@ -496,7 +496,7 @@ struct Messenger(Copyable, Movable):
             except error:
                 print("Error occurred while updating int list message. Error: ", error)
 
-    def notify_callback[call_back: def(List[String]) capturing -> None](mut self, name: String)-> Bool:
+    def notify_address_callback[call_back: def(List[String]) capturing -> None](mut self, name: String)-> Bool:
         """
         Get notified if a 'send_strings' message is received and execute a provided callback funciton.
 
@@ -521,7 +521,7 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating string list message. Error: ", error)
         return False
     
-    def update_callback[call_back: def(List[String]) capturing -> None](mut self, name: String):
+    def adress_callback[call_back: def(List[String]) capturing -> None](mut self, name: String):
         """
         Executes a given callback function with a list of strings sent from Python.
 
