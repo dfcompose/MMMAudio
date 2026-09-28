@@ -428,7 +428,7 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating float list message. Error: ", error)
         return False
     
-    def adress_callback[call_back: def(List[Float64]) capturing -> None](mut self, name: String):
+    def address_callback[call_back: def(List[Float64]) capturing -> None](mut self, name: String):
         """
         Executes a given callback function with a list of floats sent from Python.
 
@@ -475,7 +475,7 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating int list message. Error: ", error)
         return False
     
-    def adress_callback[call_back: def(List[Int]) capturing -> None](mut self, name: String):
+    def address_callback[call_back: def(List[Int]) capturing -> None](mut self, name: String):
         """
         Executes a given callback function with a list of ints sent from Python.
 
@@ -521,7 +521,7 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating string list message. Error: ", error)
         return False
     
-    def adress_callback[call_back: def(List[String]) capturing -> None](mut self, name: String):
+    def address_callback[call_back: def(List[String]) capturing -> None](mut self, name: String):
         """
         Executes a given callback function with a list of strings sent from Python.
 
