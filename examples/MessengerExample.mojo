@@ -96,7 +96,7 @@ struct MessengerExample(Copyable, Movable):
                 self.floats.append(val)
             print("Appended the following floats to self.floats: ", vals, " self.floats is now holding: ", self.floats)
 
-        self.m.update_callback[recv_floats]("callback")
+        self.m.address_callback[recv_floats]("callback")
 
         var out = MFloat[2](0.0, 0.0)
         for i in range(2):
