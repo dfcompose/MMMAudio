@@ -1,6 +1,3 @@
-# you should not edit this file
-# i don't want it to be in this directory, but it needs to be here due to a mojo compiler bug
-
 from std.atomic import Atomic
 from std.ffi import c_int, c_ulong
 from std.python import Python, PythonObject
@@ -21,40 +18,43 @@ from mmm_audio.portaudio_ffi import (
     PA_DEVICE_DEFAULT,
     PA_DEVICE_NONE,
 )
-from examples.Grains import Grains
+from mmm_audio.Graph_Module import C_GraphHandle
 
-# this is needed to make the module importable in Python - so simple!
-@doc_hidden
-@export
-def PyInit_GrainsBridge() abi("C") -> PythonObject:
-    try:
-        var m = PythonModuleBuilder("GrainsBridge")
 
-        # var person_type = mb.add_type[Person]("Person")
-        _ = m.add_type[MMMAudioBridge]("MMMAudioBridge").def_py_init[MMMAudioBridge.py_init]()
-            .def_method[MMMAudioBridge.next]("next")
-            .def_method[MMMAudioBridge.get_config]("get_config")
-            .def_method[MMMAudioBridge.open_audio_stream]("open_audio_stream")
-            .def_method[MMMAudioBridge.close_audio_stream]("close_audio_stream")
-            .def_method[MMMAudioBridge.start_audio]("start_audio")
-            .def_method[MMMAudioBridge.stop_audio]("stop_audio")
-            .def_method[MMMAudioBridge.set_screen_dims]("set_screen_dims")
-            .def_method[MMMAudioBridge.update_mouse_pos]("update_mouse_pos")
-            .def_method[MMMAudioBridge.update_bool_msg]("update_bool_msg")
-            .def_method[MMMAudioBridge.update_bools_msg]("update_bools_msg")
-            .def_method[MMMAudioBridge.update_float_msg]("update_float_msg")
-            .def_method[MMMAudioBridge.update_floats_msg]("update_floats_msg")
-            .def_method[MMMAudioBridge.update_int_msg]("update_int_msg")
-            .def_method[MMMAudioBridge.update_ints_msg]("update_ints_msg")
-            .def_method[MMMAudioBridge.update_trig_msg]("update_trig_msg")
-            .def_method[MMMAudioBridge.update_trigs_msg]("update_trigs_msg")
-            .def_method[MMMAudioBridge.update_string_msg]("update_string_msg")
-            .def_method[MMMAudioBridge.update_strings_msg]("update_strings_msg")
+def make_bridge_module(name: StaticString) raises -> PythonObject:
+    """Build the Python extension module for the audio engine. The engine will load the audio graph from a seprate .so dynamic library. Once the audio engine is built, all new graphs can use the same compiled audio engine.
 
-        return m.finalize()
-    except e:
-        _ = Error(String("error creating Python Mojo module: " + String(e)))
-        abort()
+    Args:
+        name: The name of the Python module to create.
+
+    Raises:
+        Can fail to build.
+
+    Returns:
+        A Python module object containing the `MMMAudioBridge` type.
+    """
+    comptime Bridge = MMMAudioBridge
+    var m = PythonModuleBuilder(name)
+    _ = m.add_type[Bridge]("MMMAudioBridge").def_py_init[Bridge.py_init]()
+        .def_method[Bridge.next]("next")
+        .def_method[Bridge.get_config]("get_config")
+        .def_method[Bridge.open_audio_stream]("open_audio_stream")
+        .def_method[Bridge.close_audio_stream]("close_audio_stream")
+        .def_method[Bridge.start_audio]("start_audio")
+        .def_method[Bridge.stop_audio]("stop_audio")
+        .def_method[Bridge.set_screen_dims]("set_screen_dims")
+        .def_method[Bridge.update_mouse_pos]("update_mouse_pos")
+        .def_method[Bridge.update_bool_msg]("update_bool_msg")
+        .def_method[Bridge.update_bools_msg]("update_bools_msg")
+        .def_method[Bridge.update_float_msg]("update_float_msg")
+        .def_method[Bridge.update_floats_msg]("update_floats_msg")
+        .def_method[Bridge.update_int_msg]("update_int_msg")
+        .def_method[Bridge.update_ints_msg]("update_ints_msg")
+        .def_method[Bridge.update_trig_msg]("update_trig_msg")
+        .def_method[Bridge.update_trigs_msg]("update_trigs_msg")
+        .def_method[Bridge.update_string_msg]("update_string_msg")
+        .def_method[Bridge.update_strings_msg]("update_strings_msg")
+    return m.finalize()
 
 
 @doc_hidden
@@ -63,8 +63,7 @@ def find_audio_device(
 ) raises -> Int:
     """Turns a device name into the index `open_stream` wants.
 
-    An empty name means "don't open this direction" and "default" means "let
-    PortAudio pick". Anything else matches the first device whose name
+    An empty name means "don't open" and "default" means "use system settings". Anything else matches the first device whose name
     contains it, falling back to the default if nothing matches - the same
     substring match the Python side used to do.
     """
@@ -172,7 +171,7 @@ def audio_callback(
 @fieldwise_init
 struct MMMAudioBridge(Movable, Writable):
     var world: World
-    var graph: Grains
+    var graph: C_GraphHandle
     var environment_ptr: Pointer[mut=True, Environment, MutUntrackedOrigin]
 
     var portaudio_ptr: Pointer[mut=True, PortAudio, MutUntrackedOrigin]
@@ -194,7 +193,7 @@ struct MMMAudioBridge(Movable, Writable):
     comptime simd_width = simd_width_of[DType.float64]() * 4
 
     @staticmethod
-    def py_init(out self: MMMAudioBridge, args: PythonObject, kwargs: PythonObject) raises:
+    def py_init(out self: Self, args: PythonObject, kwargs: PythonObject) raises:
 
         var args_dict = args[0]
 
@@ -203,11 +202,14 @@ struct MMMAudioBridge(Movable, Writable):
         var num_out_chans = Int(py=args_dict["num_out_chans"])
         var in_device = String(args_dict["in_device"])
         var out_device = String(args_dict["out_device"])
+        var graph_lib = String(args_dict["graph_lib"])
 
-        self = Self(block_size, num_in_chans, num_out_chans, in_device, out_device)
+        self = Self(graph_lib, block_size, num_in_chans, num_out_chans, in_device, out_device)
 
-    def __init__(out self, block_size: Int = 512, num_in_chans: Int = 12, num_out_chans: Int = 12, in_device: String = "default", out_device: String = "default") raises:
-        """Initialize the audio engine with block size, channel counts and devices.
+    def __init__(out self, graph_lib: String, block_size: Int = 512, num_in_chans: Int = 12, num_out_chans: Int = 12, in_device: String = "default", out_device: String = "default") raises:
+        """Initialize the audio engine with a graph, block size, channel counts and devices.
+
+        `graph_lib` is the path to the graph's compiled shared library.
 
         The sample rate isn't a parameter: it comes from the devices
         themselves, and the requested channel counts are clamped to what the
@@ -254,7 +256,7 @@ struct MMMAudioBridge(Movable, Writable):
         self.world = unsafe_alloc[MMMWorld](1)
         self.world.unsafe_write(MMMWorld(sample_rate, self.environment_ptr))
 
-        self.graph = Grains(self.world)
+        self.graph = C_GraphHandle(graph_lib, self.world)
 
         self.audio_state_ptr = unsafe_alloc[AudioState](1)
         self.audio_state_ptr.unsafe_write(AudioState())
@@ -502,34 +504,11 @@ struct MMMAudioBridge(Movable, Writable):
         return PythonObject(None)
 
     def get_audio_samples(mut self, loc_in_buffer: MutPointer[Float32, ...], mut loc_out_buffer: MutPointer[Float64, ...]) raises:
-        # making this a reference is very efficient
-        ref env = self.environment_ptr[]
-        var block_size = env.block_size
-        var num_in = env.num_in_chans
-        var num_out = env.num_out_chans
-
-        env.top_of_block = True
-
-        for i in range(block_size):
-            env.block_state = i  # Update the block state
-
-            if i == 1:
-                env.top_of_block = False
-                env.messenger_manager.empty_msg_dicts()
-
-            if env.top_of_block:
-                env.print_counter += 1
-            # fill the sound_in list with the current sample from all inputs
-            var in_offset = i * num_in
-            for j in range(num_in):
-                env.sound_in[j] = Float64(loc_in_buffer[unsafe_offset=in_offset + j])
-
-            var samples = self.graph.next()  # Get the next audio samples from the graph
-
-            # Fill the wire buffer with the sample data
-            var out_offset = i * num_out
-            for j in range(min(num_out, samples.__len__())):
-                loc_out_buffer[unsafe_offset=out_offset + j] = samples[Int(j)]
+        # The per-sample loop lives in the graph's library (see GraphBlock),
+        # so the whole block is one call across the library boundary.
+        self.graph.run_block(
+            Int(self.environment_ptr), Int(loc_in_buffer), Int(loc_out_buffer)
+        )
 
     def transfer_msgs_if_free(mut self) raises:
         """Drain whatever Python has queued into the message pools.

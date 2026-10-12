@@ -2,22 +2,44 @@ from mmm_audio.constants import *
 from std.collections import Dict, Set
 from std.sys import size_of
 from std.utils.coord import CoordLike
+from std.origin import MutUntrackedOrigin
+
+
+trait WorldIsMessagable:
+    """A World is Messagable if it implements these functions. This allows different types of worlds to be passed into the Messenger to be communicated with.
+
+    `MMMWorld` implements this, and so can the world of another project built to use the Messenger.
+    """
+
+    def messenger_manager_ptr(self) -> MutPointer[MessengerManager, MutUntrackedOrigin]:
+        """The `MessengerManager` that Python's messages are delivered to."""
+        ...
+
+    def top_of_block_ptr(self) -> MutPointer[Bool, MutUntrackedOrigin]:
+        """The flag that is true while the first sample of a block (or the frame) is processed.
+
+        Messages are only read while it is set.
+        """
+        ...
+
 
 struct Messenger(Copyable, Movable):
     """Communication between Python and Mojo.
     
-    It works by checking for messages sent from Python at the start of each audio block, and updating
+    It works by checking for messages sent from Python at the start of each audio block (or frame, for
+    a world other than `MMMWorld` - see `WorldIsMessagable`), and updating
     any parameters registered with it accordingly. Each data type has its own `update` function and `notify_update` which will return a Bool indicating whether the parameter was updated.
 
     For example usage, see the MessengerExample.mojo file in the [Examples](../examples/index.md) folder.
     """
 
     var namespace: Optional[String]
-    var world: World
+    var _messenger_manager: MutPointer[MessengerManager, MutUntrackedOrigin]
+    var _top_of_block: MutPointer[Bool, MutUntrackedOrigin]
 
     var key_dict: Dict[String, String]
 
-    def __init__(out self, world: World, namespace: Optional[String] = None):
+    def __init__[W: WorldIsMessagable](out self, world: Pointer[mut=True, W, MutUntrackedOrigin], namespace: Optional[String] = None):
         """Initialize the Messenger.
 
         If a 'namespace' is provided, any messages sent from Python need to be prepended with this name.
@@ -25,11 +47,12 @@ struct Messenger(Copyable, Movable):
         namespace 'synth1', then to update the freq value from Python, the user must send 'synth1.freq'.
 
         Args:
-            world: An `World` to the world to check for new messages.
+            world: The `World` to check for new messages (or any world that implements `WorldIsMessagable`).
             namespace: A `String` (or by defaut `None`) to declare as the 'namespace' for this Messenger. If a 'namespace' is provided, any messages sent from Python need to be prepended with this name. For example, if a Float64 updates with the name 'freq' and this Messenger has the namespace 'synth1', then to update the freq value from Python, the user must send 'synth1.freq'.
         """
 
-        self.world = world
+        self._messenger_manager = world[].messenger_manager_ptr()
+        self._top_of_block = world[].top_of_block_ptr()
         self.namespace = namespace
         self.key_dict = Dict[String, String]()
 
@@ -78,9 +101,9 @@ struct Messenger(Copyable, Movable):
         Returns:
             A `Bool` indicating whether the parameter was updated.
         """
-        if self.world[].top_of_block():
+        if self._top_of_block[]:
             try:
-                ref manager = self.world[].messenger_manager()
+                ref manager = self._messenger_manager[]
                 return manager._update_param(self.get_name_with_namespace(name)[], param)
             except error:
                 print("Error occurred while updating message '", name, "'. Error: ", error)
@@ -96,9 +119,9 @@ struct Messenger(Copyable, Movable):
             A `Bool` indicating whether a trigger was sent from Python under the specified name.
         """
 
-        if self.world[].top_of_block():
+        if self._top_of_block[]:
             try:
-                ref temp = self.world[].messenger_manager()
+                ref temp = self._messenger_manager[]
                 return temp.get_trig(self.get_name_with_namespace(name)[])
             except error:
                 print("Error occurred while updating trig message. Error: ", error)
@@ -124,9 +147,9 @@ struct Messenger(Copyable, Movable):
         Returns:
             A `Bool` indicating whether a message was sent from Python under the specified name.
         """
-        if self.world[].top_of_block():
+        if self._top_of_block[]:
             try:
-                ref manager = self.world[].messenger_manager()
+                ref manager = self._messenger_manager[]
                 var opt = manager._get_message[T](self.get_name_with_namespace(name)[])
                 if opt:
                     call_back(opt.value())

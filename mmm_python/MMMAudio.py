@@ -176,19 +176,11 @@ class MMMAudio:
         import os, sys
         print(f"[Compile] Starting compile for {graph_name} from {package_name}", flush=True)
         try:
-            import mojo.importer
-            from mmm_python.make_solo_graph import make_solo_graph
+            from mmm_python.graph_bridge import load_graph_bridge
 
-            import importlib
-            
-            make_solo_graph(graph_name, package_name)
-            MMMAudioBridge = importlib.import_module(f"{graph_name}Bridge")
-
-            bridge_file = graph_name + "Bridge" + ".mojo"
-            if os.path.exists(bridge_file):
-                os.remove(bridge_file)
+            engine, graph_lib = load_graph_bridge(graph_name, package_name)
             print(f"Compiled Mojo graph '{graph_name}' from package '{package_name}'. It is ready to run.")
-            return MMMAudioBridge
+            return engine, graph_lib
         except Exception as e:
             print(f"[Compile] Error: {e}", flush=True)
             import traceback
@@ -528,11 +520,12 @@ class MMMAudio:
             # Initialize Mojo bridge - PortAudio lives entirely on the Mojo side
             # =========================================================================
 
-            MMMAudioBridge = MMMAudio.compile(graph_name, package_name)
-            if MMMAudioBridge is None:
+            compiled = MMMAudio.compile(graph_name, package_name)
+            if compiled is None:
                 raise RuntimeError(
                     f"could not compile graph '{graph_name}' from package '{package_name}'"
                 )
+            engine, graph_lib = compiled
 
             # =========================================================================
             # Initialize the Mojo audio bridge
@@ -549,8 +542,9 @@ class MMMAudio:
                 "num_out_chans": num_output_channels,
                 "in_device": in_device or "",
                 "out_device": out_device or "",
+                "graph_lib": graph_lib,
             }
-            mmm_audio_bridge = MMMAudioBridge.MMMAudioBridge(d)
+            mmm_audio_bridge = engine.MMMAudioBridge(d)
 
             config = mmm_audio_bridge.get_config()
             sample_rate = int(config["sample_rate"])
