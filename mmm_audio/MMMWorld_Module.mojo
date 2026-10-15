@@ -19,6 +19,7 @@ struct Environment(Movable, Copyable):
     var mouse_x: Float64
     var mouse_y: Float64
     var block_state: Int
+    var sample_count: Int
     var top_of_block: Bool
     var last_print_time: Float64
     var print_flag: Int
@@ -39,6 +40,7 @@ struct Environment(Movable, Copyable):
         self.mouse_x = 0.0
         self.mouse_y = 0.0
         self.block_state = 0
+        self.sample_count = 0
         self.top_of_block = True
         self.last_print_time = 0.0
         self.print_flag = 0
@@ -187,6 +189,17 @@ struct MMMWorld(Movable, Copyable, WorldIsMessagable):
 
         print("Warning: Environment pointer is None. Returning default block_state value of 0.")
         return 0
+
+    @always_inline
+    def sample_count(self) -> Int:
+        """Returns the number of samples processed since the audio engine started. It increases by 1 every sample, so it can be used to tell whether something already happened during the current sample.
+
+        Returns:
+            The index of the current sample since the audio engine started, or -1 if there is no Environment.
+        """
+        if self.environment_ptr:
+            return self.environment_ptr.value()[].sample_count
+        return -1
 
     @always_inline
     def num_in_chans(self) -> Int:

@@ -217,15 +217,27 @@ def load_graph_bridge(graph_name: str, package_name: str):
     engine_stub = ENGINE_STUB.format(engine_name=ENGINE_NAME)
     engine_path = build_shared_lib(ENGINE_NAME, engine_stub, pkg_dir.name, [pkg_dir])
 
+    graph_path = build_graph_lib(graph_name, package_name, pkg_dir)
+
+    return load_extension(ENGINE_NAME, engine_path), str(graph_path)
+
+
+def build_graph_lib(graph_name: str, package_name: str, pkg_dir=None) -> Path:
+    """Build (if needed) the shared library for `package_name.graph_name` and return its path.
+
+    The graph package is resolved against the current working directory and the repo root.
+    `pkg_dir` is the precompiled `mmm_audio` package directory (built if not given).
+    """
+    if pkg_dir is None:
+        pkg_dir = precompile_package(REPO_ROOT / "mmm_audio")
+
     graph_stub = GRAPH_STUB.format(package_name=package_name, graph_name=graph_name)
     source_dirs = [Path.cwd().resolve(), REPO_ROOT]
     # The package directory must come first: Mojo takes the first match on the
     # include path, and the repo root also holds the `mmm_audio` sources.
-    graph_path = build_shared_lib(
+    return build_shared_lib(
         f"{graph_name}Graph",
         graph_stub,
         source_hash(source_dirs, graph_stub),
         [pkg_dir, *source_dirs],
     )
-
-    return load_extension(ENGINE_NAME, engine_path), str(graph_path)

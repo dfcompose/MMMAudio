@@ -1,10 +1,4 @@
-from std.ffi import OwnedDLHandle
-from std.origin import MutUntrackedOrigin
-
-from mmm_audio.constants import *
-from mmm_audio.MMMWorld_Module import Environment
-
-# An audio graph is compiled into its own shared library (in the 
+# This file is used to compile an audio graphinto its own shared library (in the 
 # `mmm_python/graph_bridge.py`). It is then loaded by the prebuilt audio engine. 
 # The library exports these two C functions:
 #
@@ -14,13 +8,19 @@ from mmm_audio.MMMWorld_Module import Environment
 # `in_addr` is interleaved float32 input, `out_addr` interleaved float64 output,
 # both `block_size` frames long.
 
+from std.ffi import OwnedDLHandle
+from std.origin import MutUntrackedOrigin
+
+from mmm_audio.constants import *
+from mmm_audio.MMMWorld_Module import Environment
+
 # these are both standard C function declarations, with different arguments and return types. 
 comptime GraphNewFn = def(Int) abi("C") thin -> Int #the function signature graph creation function
 comptime GraphBlockDef = def(Int, Int, Int, Int) abi("C") thin -> None #the function signature for the graph block processing function
 
 @doc_hidden
 def _c_function_lookup[T: ImplicitlyCopyable](dy_lib: OwnedDLHandle, func_name: String) raises -> T:
-    """Look up `func_name` in `dy_lib` as a C function of type `T`. This will return one of the two functions definced above.
+    """Look up `func_name` in `dy_lib` as a C function of type `T`. This will return one of the two functions defined above.
     
     Parameters:
         T: The type of the C function to look up. Must be a function type with `abi("C")` and `thin`.
@@ -64,8 +64,10 @@ struct C_GraphHandle(Movable):
 struct GraphBlock:
     """Per-sample bookkeeping for one audio block, used inside a graph library.
 
-    The generated `mmm_graph_block` calls `process_single_sample(i)`, then the graph's
-    `next()`, then `write(i, samples)` for each frame of the block.
+    The generated `mmm_graph_block` does the following for each frame of the block:
+    1. calls `process_single_sample(i)` to get the next input sample from the input buffer
+    2. calls the graph's `next()` function
+    3. calls `write(i, samples)` to write the output sample to the output buffer for each frame of the block.
     """
 
     var environment: MutPointer[Environment, MutUntrackedOrigin]
@@ -95,6 +97,7 @@ struct GraphBlock:
     @always_inline
     def process_single_sample(mut self, i: Int, mut env: Environment):
         env.block_state = i
+        env.sample_count += 1
 
         if env.top_of_block:
             env.print_counter += 1

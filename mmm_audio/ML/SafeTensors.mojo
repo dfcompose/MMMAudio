@@ -1,5 +1,6 @@
 from std.os.path import exists
 from emberjson import from_json, Document
+from mmm_audio.functions import resolve_resource_path
 
 @fieldwise_init
 struct TensorInfo(Copyable, Movable):
@@ -57,9 +58,10 @@ struct SafeTensors(Movable):
         Raises:
             Error: If the file is missing or is not a valid safetensors file.
         """
-        if not exists(path):
+        var resolved = resolve_resource_path(path)
+        if not exists(resolved):
             raise Error("safetensors file not found: " + path)
-        with open(path, "r") as f:
+        with open(resolved, "r") as f:
             self.data = f.read_bytes()
         self.tensors = Dict[String, TensorInfo]()
         self.metadata_dict = Dict[String, String]()

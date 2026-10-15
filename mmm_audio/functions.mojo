@@ -1,7 +1,8 @@
 from mmm_audio.constants import *
 from std.math import pow, log10, log, log2, abs, isnan, log1p, floor, iota
 from std.python import PythonObject
-from std.os import abort
+from std.os import abort, getenv
+from std.os.path import exists
 from std.pathlib import Path
 from std.random import random_float64, random_ui64
 
@@ -1338,3 +1339,37 @@ def rad_to_deg(radians: Float64) -> Float64:
         The given angle in degrees.
     """
     return radians * (180/pi)
+
+def resolve_resource_path(file_name: String) -> String:
+    """Most graphs have resource files with names relative to the MMMAudio folder, like `"resources/Shiverer.wav"` or `"resources/bach.json"`.
+
+    However, in the case of PluginExporter, when we export a VST/AU plugin, the working directory is the host's, so that path points at nothing. 
+    
+    In those cases The PluginExporter therefore copies each file the graph names into the plugin bundle under the same relative path, and the plugin sets `MMM_RESOURCE_DIR` to that folder.
+
+    Checked in order; the first match is returned:
+
+    1. An absolute path: returned unchanged.
+    2. A relative path that exists from the working directory: returned
+       unchanged (the normal case from Python).
+    3. `<MMM_RESOURCE_DIR>/<file_name>`, if it exists (the normal case in a
+       plugin).
+    4. Otherwise `file_name` unchanged, so the open error names the path the
+       graph wrote.
+
+    This can be used to open any file that the graph names, whether in Python or in a plugin. 
+
+    Args:
+        file_name: The path as the graph wrote it.
+
+    Returns:
+        `file_name`, or `<MMM_RESOURCE_DIR>/<file_name>` if the file was only found there.
+    """
+    if file_name.startswith("/") or exists(file_name):
+        return file_name
+    var root = getenv("MMM_RESOURCE_DIR")
+    if root != "":
+        var candidate = root + "/" + file_name
+        if exists(candidate):
+            return candidate
+    return file_name

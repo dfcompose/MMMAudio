@@ -358,6 +358,46 @@ class MMMAudio:
         """Send a list of integers to the Mojo audio engine."""
         self.command_queue.put((AudioCommand.SEND_INTS, (key, values)))
     
+    def send_midi(self, message: List[int]):
+        """Forward a raw MIDI message (such as the bytes given to a supriya_midi MidiIn callback) to the Mojo audio engine.
+
+        Uses the same message names and values as the exported plugins, so a graph that
+        reads these messages works the same with a MIDI device in Python and in a DAW.
+        All are sent with send_ints, so read them in the graph with
+        Messenger.notify_update_all into a List[List[Int]]. Channels are 1 to 16.
+
+        | name               | values                       |
+        |--------------------|------------------------------|
+        | "note_on"          | [note, velocity, channel]    |
+        | "note_off"         | [note, velocity, channel]    |
+        | "cc"               | [controller, value, channel] |
+        | "pitch_bend"       | [value, channel] (0 to 16383, 8192 is no bend) |
+        | "poly_aftertouch"  | [note, pressure, channel]    |
+        | "channel_pressure" | [pressure, channel]          |
+        | "program_change"   | [program, channel]           |
+
+        A note on with a velocity of 0 is sent as a note off. System messages are ignored.
+        """
+        if len(message) < 2 or message[0] < 0x80 or message[0] >= 0xF0:
+            return
+        kind = message[0] & 0xF0
+        channel = (message[0] & 0x0F) + 1
+        if kind in (0xC0, 0xD0):
+            self.send_ints("program_change" if kind == 0xC0 else "channel_pressure", [message[1], channel])
+            return
+        if len(message) < 3:
+            return
+        if kind == 0x90 and message[2] > 0:
+            self.send_ints("note_on", [message[1], message[2], channel])
+        elif kind in (0x80, 0x90):
+            self.send_ints("note_off", [message[1], message[2] if kind == 0x80 else 0, channel])
+        elif kind == 0xA0:
+            self.send_ints("poly_aftertouch", [message[1], message[2], channel])
+        elif kind == 0xB0:
+            self.send_ints("cc", [message[1], message[2], channel])
+        elif kind == 0xE0:
+            self.send_ints("pitch_bend", [message[1] | (message[2] << 7), channel])
+
     def send_trig(self, key: str):
         """Send a trigger message to the Mojo audio engine."""
         self.command_queue.put((AudioCommand.SEND_TRIG, (key,)))
