@@ -57,6 +57,7 @@ portaudio = ">=19.7.0,<20"
 safetensors = ">=0.8.0,<0.9"
 emberjson = "*"
 cmake = ">=4.4.4,<5"
+mojo-net = ">=0.2.8,<0.3"
 
 # torch comes from a different place on each platform.
 #
