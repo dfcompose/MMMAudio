@@ -34,6 +34,7 @@ def PyInit_GrainsBridge() abi("C") -> PythonObject:
             .def_method[MMMAudioBridge.update_trigs_msg]("update_trigs_msg")
             .def_method[MMMAudioBridge.update_string_msg]("update_string_msg")
             .def_method[MMMAudioBridge.update_strings_msg]("update_strings_msg")
+            .def_method[MMMAudioBridge.recv_msg_float]("recv_msg")
 
         return m.finalize()
     except e:
@@ -46,20 +47,22 @@ struct MMMAudioBridge(Movable, Writable):
     var world: World
     var graph: Grains
     var environment_ptr: Pointer[mut=True, Environment, MutUntrackedOrigin]
+    var communicator: PythonObject
 
     @staticmethod
     def py_init(out self: MMMAudioBridge, args: PythonObject, kwargs: PythonObject) raises:
 
         var args_dict = args[0]
-
+        print(args_dict)
         var sample_rate = Float64(py=args_dict["sample_rate"])
         var block_size = Int(py=args_dict["block_size"])
         var num_in_chans = Int(py=args_dict["num_in_chans"])
         var num_out_chans = Int(py=args_dict["num_out_chans"])
+        # var comms = kwargs[0]["comms"]
+        self = Self(sample_rate, block_size, num_in_chans, num_out_chans, PythonObject(None))
+        self.communicator = PythonObject(None)
 
-        self = Self(sample_rate, block_size, num_in_chans, num_out_chans)
-
-    def __init__(out self, sample_rate: Float64 = 44100.0, block_size: Int = 512, num_in_chans: Int = 12, num_out_chans: Int = 12):
+    def __init__(out self, sample_rate: Float64 = 44100.0, block_size: Int = 512, num_in_chans: Int = 12, num_out_chans: Int = 12, comms: PythonObject = PythonObject(None)):
         """Initialize the audio engine with sample rate, block size, and number of channels."""
 
         self.environment_ptr = unsafe_alloc[Environment](1)
@@ -69,6 +72,8 @@ struct MMMAudioBridge(Movable, Writable):
         self.world.unsafe_write(MMMWorld(sample_rate, self.environment_ptr))
 
         self.graph = Grains(self.world)
+
+        self.communicator : PythonObject = comms
 
     def write_to(self, mut writer: Some[Writer]):
         writer.write("MMMAudioBridge with sample_rate=", self.world[].sample_rate, ", block_size=", self.environment_ptr[].block_size)
@@ -210,6 +215,32 @@ struct MMMAudioBridge(Movable, Writable):
             for j in range(min(self.environment_ptr[].num_out_chans, samples.__len__())):
                 loc_out_buffer[unsafe_offset=i * self.environment_ptr[].num_out_chans + j] = samples[Int(j)]
 
+    @staticmethod
+    def recv_msg_float(py_selfA: PythonObject, key_in: PythonObject, target_list: PythonObject) raises -> PythonObject:
+        
+        var py_self = py_selfA.downcast_value_ptr[Self]()
+
+        var key = String(key_in)
+
+
+        ref msgr = py_self[].environment_ptr[].messenger_manager
+        
+        if not key in msgr.float_msg_out_pool:
+            print("Messenger has no key: ", key)
+            return PythonObject(None)
+
+        if len(msgr.float_msg_out_pool[key]) > 0:
+
+
+            for val in msgr.float_msg_out_pool[key]:
+                target_list.append(val)
+            
+            msgr.float_msg_out_pool[key].resize(0, 0)
+            
+        
+        return PythonObject(None)
+
+   
     @staticmethod
     def next(py_selfA: PythonObject, in_buffer: PythonObject, out_buffer: PythonObject) raises -> PythonObject:
 

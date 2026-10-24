@@ -65,6 +65,7 @@ class MouseGetter:
         return (x / self.width, y / self.height)
             
 
+
 class AudioCommand(IntEnum):
     STOP_PROCESS = 0
     START_AUDIO = 1
@@ -81,6 +82,7 @@ class AudioCommand(IntEnum):
     GET_SAMPLES = 12
     UPDATE_MOUSE = 13  # New command for mouse updates
     SET_SCREEN_DIMS = 14  # New command for screen dimensions
+    RECV_MSG = 15
 
 class MMMAudio:
     """
@@ -142,10 +144,11 @@ class MMMAudio:
         out_device: str | None = "default",
         graph_name: str = "FeedbackDelays",
         package_name: str = "examples",
-        audio_init_timeout: float = 10.0
+        audio_init_timeout: float = 10.0,
+        comms: np.ndarray | None = np.array([32,36,79])
     ):
         self.ctx = mp.get_context("spawn")
-
+        self.test_bridge = None
         # Store configuration
         self.blocksize = blocksize
         self.num_input_channels = num_input_channels
@@ -168,7 +171,15 @@ class MMMAudio:
         self.shared_float_params = {}
         self.shared_int_params = {}
 
+
+        # Message receiving
+        self.response_callbacks = {}
+        
+        
+        self.response_task = None 
+        
         MMMAudio.instances.append(self)
+        
 
         signal.signal(signal.SIGINT, self._signal_handler)
 
@@ -331,10 +342,26 @@ class MMMAudio:
     
     def start_audio(self):
         """Start audio streaming in the audio process"""
+        
+        if self.response_task:
+            self.response_task.cancel()
+        
+        async def receive_message_loop():
+                        while True:
+                            if len(self.response_callbacks):
+                                for key in self.response_callbacks:
+                                    self.recv_msg(key)
+                            await asyncio.sleep(0.01)
+        self.response_task = asyncio.create_task(receive_message_loop())
+        
         self.command_queue.put((AudioCommand.START_AUDIO, None))
     
     def stop_audio(self):
         """Stop audio streaming in the audio process"""
+        
+        if not self.response_task:
+            self.response_task.cancel()
+    
         self.command_queue.put((AudioCommand.STOP_AUDIO, None))
     
     def is_running(self) -> bool:
@@ -393,6 +420,30 @@ class MMMAudio:
         """Send screen dimensions to the audio process."""
         self.command_queue.put((AudioCommand.SET_SCREEN_DIMS, (width, height)))
     
+    
+    # ====================================================
+    # Message receiving methods
+    # ====================================================
+    
+    def register_response_callback(self, key: str, callback):
+        self.response_callbacks[key] = callback
+    
+    def recv_msg(self, key: str):
+        self.command_queue.put((AudioCommand.RECV_MSG, (key,)))
+        
+        try:
+            response = self.response_queue.get(timeout=30.0)
+            if response[0] == "FLOAT":
+                key = response[1][0]
+                for val in response[1][1]:
+                    self.response_callbacks[key](val)
+        except Exception as e:
+            print("Something went wrong")
+        
+    async def receive_messages(self):
+        while True:
+            print("❤️ Heartbeat... Ping!")
+            await asyncio.sleep(2)
     # =========================================================================
     # Methods that need response from audio process
     # =========================================================================
@@ -621,6 +672,7 @@ class MMMAudio:
                 "num_out_chans": actual_output_channels
                 }
             mmm_audio_bridge = MMMAudioBridge.MMMAudioBridge(d)
+            
             # =========================================================================
             # Shared state for callback
             # =========================================================================
@@ -859,6 +911,18 @@ class MMMAudio:
                     mmm_audio_bridge.set_screen_dims((width, height))
                 return True
 
+            def handle_recv_msg(args):
+                key= args[0]
+                msg = []
+                
+                with bridge_lock:
+                    mmm_audio_bridge.recv_msg(key, msg)
+                    response_queue.put(("FLOAT", (key, msg)))
+                    # callback(test)
+                
+                
+                return True
+                
             command_handlers = [
                 handle_stop_process,      # 0
                 handle_start_audio,       # 1
@@ -875,6 +939,7 @@ class MMMAudio:
                 handle_get_samples,       # 12
                 handle_update_mouse,      # 13
                 handle_set_screen_dims,   # 14
+                handle_recv_msg           # 15
             ]
 
             # =========================================================================

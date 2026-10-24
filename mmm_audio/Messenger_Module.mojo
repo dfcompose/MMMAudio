@@ -411,6 +411,18 @@ struct Messenger(Copyable, Movable):
                 print("Error occurred while updating trig message. Error: ", error)
         return False
 
+
+    ## Msg out stuff
+    def send_float(mut self, name: String, val: Float64) raises:
+        try:
+            ref temp = self.world[].messenger_manager()
+            temp.put_float(name, val)
+        except error:
+            print("Error occured when attempting to send float message out. Error: ", error)
+            
+    
+
+
 @doc_hidden
 struct BoolMessage(Movable, Copyable):
     var retrieved: Bool
@@ -497,6 +509,11 @@ struct TrigsMessage(Movable, Copyable):
 @doc_hidden
 struct MessengerManager(Movable, Copyable):
 
+    ## Out dicts
+    var float_msg_out_pool: Dict[String, List[Float64]]
+    var floats_msg_out_pool: Dict[String, List[Array[Float64, 128]]]
+
+    ## In dicts
     var bool_msg_pool: Dict[String, Bool]
     var bool_msgs: Dict[String, BoolMessage]
 
@@ -561,6 +578,9 @@ struct MessengerManager(Movable, Copyable):
 
         self.trigs_msg_pool = Dict[String, List[Bool]]()
         self.trigs_msgs = Dict[String, TrigsMessage]()
+
+        self.float_msg_out_pool = Dict[String, List[Float64]]()
+        self.floats_msg_out_pool = Dict[String, List[Array[Float64, 128]]]()
 
     ##### Bool #####
     @always_inline
@@ -724,6 +744,20 @@ struct MessengerManager(Movable, Copyable):
             self.trigs_msgs[key].retrieved = True
             return self.trigs_msgs[key].value.copy()
         return None
+
+
+    def put_floats[key: String, size: Float64](mut self, vals: List[Float64]) raises:
+        
+        # self.float_msg_out_pool[key].append(vals)
+        pass
+    @always_inline
+    def put_float(mut self, key: String, val: Float64) raises:
+
+        if not key in self.float_msg_out_pool:
+            self.float_msg_out_pool[key] = []
+            
+        self.float_msg_out_pool[key].append(val)
+        pass
 
     def empty_msg_dicts(mut self):
         for bool_msg in self.bool_msgs.take_items():
