@@ -166,6 +166,7 @@ class MMMAudio:
         self.shared_int_params = {}
         
         self.response_callbacks = {}
+        self.response_task = None 
 
         MMMAudio.instances.append(self)
 
