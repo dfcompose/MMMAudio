@@ -164,6 +164,8 @@ class MMMAudio:
         # Shared values for real-time parameter control
         self.shared_float_params = {}
         self.shared_int_params = {}
+        
+        self.response_callbacks = {}
 
         MMMAudio.instances.append(self)
 
@@ -419,8 +421,27 @@ class MMMAudio:
         """Send screen dimensions to the audio process."""
         self.command_queue.put((AudioCommand.SET_SCREEN_DIMS, (width, height)))
     
-    def recv_msg(self):
-        self.command_queue.put((AudioCommand.RECV_MSG))
+    # =========================================================================
+    # Message receiving methods
+    # =========================================================================
+    
+    
+    def register_response_callback(self, key: str, callback):
+        self.response_callbacks[key] = callback
+    
+    def recv_msg(self, key: str):
+        self.command_queue.put((AudioCommand.RECV_MSG, (key,)))
+        
+        try:
+            response = self.response_queue.get(timeout=30.0)
+            if response[0] == "FLOAT":
+                key = response[1][0]
+                for val in response[1][1]:
+                    self.response_callbacks[key](val)
+        except Exception as e:
+            print("Something went wrong")
+        
+    
     # =========================================================================
     # Methods that need response from audio process
     # =========================================================================
