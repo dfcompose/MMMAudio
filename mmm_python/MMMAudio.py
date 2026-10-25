@@ -337,7 +337,7 @@ class MMMAudio:
     def stop_audio(self):
         """Stop audio streaming in the audio process"""
         if not self.response_task:
-                    self.response_task.cancel()
+            self.response_task.cancel()
         
         self.command_queue.put((AudioCommand.STOP_AUDIO, None))
     
