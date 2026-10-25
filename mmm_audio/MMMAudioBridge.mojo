@@ -504,6 +504,19 @@ struct MMMAudioBridge(Movable, Writable):
 
         return PythonObject(None)
 
+
+    @staticmethod
+    def query_float_msgs(py_selfA: PythonObject, key: PythonObject, container: PythonObject) raises -> PythonObject:
+        var py_self = py_selfA.downcast_value_ptr[Self]()
+        var pool = py_self[].environment_ptr[].out_messenger_manager._get_messages[Float64](String(py=key))
+        
+        if pool:
+            for val in pool.value():
+                container.append(val)
+
+        return PythonObject(None)
+
+
     def get_audio_samples(mut self, loc_in_buffer: MutPointer[Float32, ...], mut loc_out_buffer: MutPointer[Float64, ...]) raises:
         # The per-sample loop lives in the graph's library (see GraphBlock),
         # so the whole block is one call across the library boundary.
