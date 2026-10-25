@@ -749,9 +749,16 @@ class MMMAudio:
                 mmm_audio_bridge.set_screen_dims((width, height))
                 return True
 
-            def recv_msg():
-                vals = mmm_audio_bridge.recv_msg()
-                print(vals)
+            
+            def handle_recv_msg(args):
+                key= args[0]
+                msg = []
+                
+                mmm_audio_bridge.recv_msg(key, msg)
+                response_queue.put(("FLOAT", (key, msg)))
+                    # callback(test)
+                
+                return True
             
             command_handlers = [
                 handle_stop_process,      # 0
@@ -769,7 +776,7 @@ class MMMAudio:
                 handle_get_samples,       # 12
                 handle_update_mouse,      # 13
                 handle_set_screen_dims,   # 14
-                recv_msg
+                handle_recv_msg           # 15
             ]
 
             # =========================================================================
