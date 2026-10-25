@@ -325,11 +325,11 @@ class MMMAudio:
             self.response_task.cancel()
         
         async def receive_message_loop():
-                        while True:
-                            if len(self.response_callbacks):
-                                for key in self.response_callbacks:
-                                    self.recv_msg(key)
-                            await asyncio.sleep(0.01)
+            while True:
+                if len(self.response_callbacks):
+                    for key in self.response_callbacks:
+                        self.recv_msg(key)
+                await asyncio.sleep(0.01)
         self.response_task = asyncio.create_task(receive_message_loop())
         
         self.command_queue.put((AudioCommand.START_AUDIO, None))
