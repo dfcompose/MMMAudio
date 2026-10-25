@@ -19,6 +19,15 @@ trait WorldIsMessagable:
         """
         ...
 
+    def out_messenger_manager_ptr(self) -> MutPointer[MessengerManager, MutUntrackedOrigin]:
+        """The `MessengerManager` that Mojo's messages are delivered to.
+        
+        Returns:
+            A mutable pointer to the Outgoing MessengerManager.
+        """
+        ...
+
+
     def top_of_block_ptr(self) -> MutPointer[Bool, MutUntrackedOrigin]:
         """The flag that is true while the first sample of a block (or the frame) is processed. Messages are only read while it is set to True.
 
@@ -40,6 +49,7 @@ struct Messenger(Copyable, Movable):
 
     var namespace: Optional[String]
     var _messenger_manager: MutPointer[MessengerManager, MutUntrackedOrigin]
+    var _out_messenger_manager: MutPointer[MessengerManager, MutUntrackedOrigin]
     var _top_of_block: MutPointer[Bool, MutUntrackedOrigin]
 
     var key_dict: Dict[String, String]
@@ -56,6 +66,7 @@ struct Messenger(Copyable, Movable):
         """
 
         self._messenger_manager = world[].messenger_manager_ptr()
+        self._out_messenger_manager = world[].out_messenger_manager_ptr()
         self._top_of_block = world[].top_of_block_ptr()
         self.namespace = namespace
         self.key_dict = Dict[String, String]()
@@ -269,6 +280,39 @@ struct Messenger(Copyable, Movable):
             name: A `String` to identify the messages sent from Python.
         """
         _ = self.notify_address_callback_all[call_back](name)
+
+
+    ## Sending messages out
+    def send_float(mut self, key: String, val: Float64):
+        self._out_messenger_manager[].update_float_msg(key, val)
+        
+    def send_floats(mut self, key: String, vals: List[Float64]):
+        # Not sure if this needs to be a copy here, but I think it does initially
+        self._out_messenger_manager[].update_floats_msg(key, vals.copy())
+
+    def send_int(mut self, key: String, val: Int):
+        self._out_messenger_manager[].update_int_msg(key, val)
+    
+    def send_ints(mut self, key: String, vals: List[Int]):
+        self._out_messenger_manager[].update_ints_msg(key, vals.copy())
+
+    def send_bool(mut self, key: String, val: Bool):
+        self._out_messenger_manager[].update_bool_msg(key, val)
+
+    def send_bools(mut self, key: String, vals: List[Bool]):
+        self._out_messenger_manager[].update_bools_msg(key, vals.copy())
+
+    def send_string(mut self, key: String, val: String):
+        self._out_messenger_manager[].update_string_msg(key, val)
+
+    def send_strings(mut self, key: String, vals: List[String]):
+        self._out_messenger_manager[].update_strings_msg(key, vals.copy())
+    
+    def send_trig(mut self, key: String):
+        self._out_messenger_manager[].update_trig_msg(key)
+        pass
+
+
 
 @doc_hidden
 struct Message[T: Copyable & Deinitable](Movable, Copyable):

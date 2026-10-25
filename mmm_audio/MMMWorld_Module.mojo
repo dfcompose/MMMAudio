@@ -162,6 +162,19 @@ struct MMMWorld(Movable, Copyable, WorldIsMessagable):
             unsafe_from_address=Int(Pointer(to=self.environment_ptr.value()[].messenger_manager))
         )
 
+    def out_messenger_manager_ptr(self) -> MutPointer[MessengerManager, MutUntrackedOrigin]:
+        """A pointer to the Environment's MessengerManager, for `Messenger` (see `WorldIsMessagable`).
+
+        Returns:
+            A pointer to the MessengerManager.
+        """
+        if not self.environment_ptr:
+            abort("MMMWorld has no Environment, so a Messenger can't be created from it.")
+        return MutPointer[MessengerManager, MutUntrackedOrigin](
+            unsafe_from_address=Int(Pointer(to=self.environment_ptr.value()[].out_messenger_manager))
+        )
+
+
     def top_of_block_ptr(self) -> MutPointer[Bool, MutUntrackedOrigin]:
         """A pointer to the Environment's top-of-block flag, for `Messenger` (see `WorldIsMessagable`).
 
