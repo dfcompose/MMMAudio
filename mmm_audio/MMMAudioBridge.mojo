@@ -54,7 +54,7 @@ def make_bridge_module(name: StaticString) raises -> PythonObject:
         .def_method[Bridge.update_trigs_msg]("update_trigs_msg")
         .def_method[Bridge.update_string_msg]("update_string_msg")
         .def_method[Bridge.update_strings_msg]("update_strings_msg")
-        .def_method[Bridge.to_python]("recv_msg")
+        .def_method[Bridge.query_float_msgs]("recv_msg")
     return m.finalize()
 
 
@@ -611,12 +611,6 @@ struct MMMAudioBridge(Movable, Writable):
             )
 
 
-    ## Mojo -> Python Messenger stuff
-    @staticmethod
-    def to_python(py_selfA: PythonObject) raises -> PythonObject:
-        from std.python import Python
-        var list = Python.list(0,0,0,0)
-        return list
     
     @staticmethod
     def next(py_selfA: PythonObject, in_buffer: PythonObject, out_buffer: PythonObject) raises -> PythonObject:
