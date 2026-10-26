@@ -59,7 +59,9 @@ def make_bridge_module(name: StaticString) raises -> PythonObject:
         .def_method[Bridge.query_int_msgs]("query_int_msgs")
         .def_method[Bridge.query_ints_msgs]("query_ints_msgs")
         .def_method[Bridge.query_string_msgs]("query_string_msgs")
+        .def_method[Bridge.query_strings_msgs]("query_strings_msgs")
         .def_method[Bridge.query_bool_msgs]("query_bool_msgs")
+        .def_method[Bridge.query_bools_msgs]("query_bools_msgs")
         .def_method[Bridge.query_msgs_by_key]("receive_messages")
         .def_method[Bridge.transfer_out_msgs]("get_out_messages")
         .def_method[Bridge.clear_out_msgs]("clear_out_msgs")
@@ -623,6 +625,28 @@ struct MMMAudioBridge(Movable, Writable):
             py_self[].audio_state_ptr[].pools.release()
         return PythonObject(None)
 
+    @staticmethod
+    def query_strings_msgs(py_selfA: PythonObject, key: PythonObject, container: PythonObject) raises -> PythonObject:
+        var py_self = py_selfA.downcast_value_ptr[Self]()
+        # py_self[].environment_ptr[].out_messenger_manager.transfer_msgs()
+        
+        
+        py_self[].audio_state_ptr[].pools.acquire()
+        try:
+            var opt = py_self[].environment_ptr[].out_messenger_manager._get_messages[List[String]](String(py=key))
+            
+            if opt:
+                for i in range(len(opt.value())):
+                    var py_list = Python.list()
+                    
+                    for j in opt.value()[i]:
+                        py_list.append(j)
+                    
+                    container.append(py_list)
+
+        finally:
+            py_self[].audio_state_ptr[].pools.release()
+        return PythonObject(None)
 
     @staticmethod
     def query_bool_msgs(py_selfA: PythonObject, key: PythonObject, container: PythonObject) raises -> PythonObject:
@@ -642,6 +666,29 @@ struct MMMAudioBridge(Movable, Writable):
             py_self[].audio_state_ptr[].pools.release()
         return PythonObject(None)
 
+    @staticmethod
+    def query_bools_msgs(py_selfA: PythonObject, key: PythonObject, container: PythonObject) raises -> PythonObject:
+        var py_self = py_selfA.downcast_value_ptr[Self]()
+        # py_self[].environment_ptr[].out_messenger_manager.transfer_msgs()
+        
+        
+        py_self[].audio_state_ptr[].pools.acquire()
+        try:
+            var opt = py_self[].environment_ptr[].out_messenger_manager._get_messages[List[Bool]](String(py=key))
+            
+            if opt:
+                for i in range(len(opt.value())):
+                    var py_list = Python.list()
+                    
+                    for j in opt.value()[i]:
+                        py_list.append(j)
+                    
+                    container.append(py_list)
+
+        finally:
+            py_self[].audio_state_ptr[].pools.release()
+        return PythonObject(None)
+    
     @staticmethod
     def query_msgs_by_key(py_selfA: PythonObject, key: PythonObject, container: PythonObject) raises -> PythonObject:
         """
@@ -671,6 +718,13 @@ struct MMMAudioBridge(Movable, Writable):
         if container:
             return PythonObject(None)
 
+        _ = py_selfA.query_strings_msgs(key, container)
+        if container:
+            return PythonObject(None)
+
+        _ = py_selfA.query_bools_msgs(key, container)
+        if container:
+            return PythonObject(None)
         
         return PythonObject(None)
 
