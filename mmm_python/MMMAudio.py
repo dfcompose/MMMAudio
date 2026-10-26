@@ -450,6 +450,9 @@ class MMMAudio:
     
     
     def register_response_callback(self, key: str, callback):
+        """
+        Registers a callback function to be ran when a message is received from Mojo. The callback function receives a list of all messages on the address that Mojo has sent from the previous poll.
+        """
         self.response_callbacks[key] = callback
     
     def recv_msg(self, keys: list):
@@ -459,8 +462,8 @@ class MMMAudio:
             response = self.response_queue.get(timeout=30.0)
             if response[0] == "MSG_RECEIVED":
                 key = response[1][0]
-                for val in response[1][1]:
-                    self.response_callbacks[key](val)
+                
+                self.response_callbacks[key](response[1][1])
                 
         except Exception as e:
             print("Something went wrong")

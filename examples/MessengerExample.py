@@ -58,7 +58,8 @@ a.send_floats("callback", [1.0, 2.0, 3.0])
 
 # Messages can be received from Mojo, when received they will run a callback function for the given address.
 
-def mojo_callback(val):
+def mojo_callback(vals):
+    val = vals[0]
     print("Received value " + str(val) +  " from Mojo.")
 
 a.register_response_callback("from_mojo", mojo_callback)
