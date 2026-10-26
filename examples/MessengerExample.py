@@ -59,6 +59,7 @@ a.send_floats("callback", [1.0, 2.0, 3.0])
 # Messages can be received from Mojo, when received they will run a callback function for the given address.
 
 def mojo_callback(vals):
+    # The callback is passed a list of all values sent from Mojo since the last poll.
     val = vals[0]
     print("Received value " + str(val) +  " from Mojo.")
 
