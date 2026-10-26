@@ -56,6 +56,8 @@ def make_bridge_module(name: StaticString) raises -> PythonObject:
         .def_method[Bridge.update_strings_msg]("update_strings_msg")
         .def_method[Bridge.query_float_msgs]("query_float_msgs")
         .def_method[Bridge.query_int_msgs]("query_int_msgs")
+        .def_method[Bridge.query_string_msgs]("query_string_msgs")
+        .def_method[Bridge.query_bool_msgs]("query_bool_msgs")
         .def_method[Bridge.query_msgs_by_key]("receive_messages")
         .def_method[Bridge.transfer_out_msgs]("get_out_messages")
         .def_method[Bridge.clear_out_msgs]("clear_out_msgs")
@@ -602,7 +604,16 @@ struct MMMAudioBridge(Movable, Writable):
 
         _ = py_selfA.query_float_msgs(key, container)
         if container:
-            return PythonObject(None) 
+            return PythonObject(None)
+
+        _ = py_selfA.query_string_msgs(key, container)
+        if container:
+            return PythonObject(None)
+
+        _ = py_selfA.query_bool_msgs(key, container)
+        if container:
+            return PythonObject(None)
+
         
         return PythonObject(None)
 
