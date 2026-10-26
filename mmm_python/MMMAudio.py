@@ -14,8 +14,6 @@ from typing import Optional, Tuple, List
 from enum import IntEnum
 from collections import namedtuple
 
-from mmm_python import Scheduler
-
 import signal
 
 class MouseGetter:
@@ -168,7 +166,7 @@ class MMMAudio:
         self.shared_int_params = {}
         
         self.response_callbacks = {}
-        self.response_scheduler = Scheduler() 
+        self.response_task = None 
         self.poll_rate = 0.01
 
         MMMAudio.instances.append(self)
@@ -323,27 +321,30 @@ class MMMAudio:
     
     def start_audio(self):
         """Start audio streaming in the audio process"""
+        from mmm_python import Scheduler
         
+        if self.response_task:
+            self.response_task.cancel()
         
-        # Stop multiple receive loops from running
-        self.response_scheduler.stop_routs()
-
+        sched = Scheduler()
+        
         async def receive_message_loop():
             while True:
                 if len(self.response_callbacks):
+                    
                     self.poll_incoming_msgs(list(self.response_callbacks))
+                        # self.clear_out_msgs()
                 await asyncio.sleep(self.poll_rate)
-        
-        self.response_scheduler.start_thread()
-        self.response_scheduler.sched(receive_message_loop())
-        
+        sched.start_thread()
+        sched.sched(receive_message_loop())
+        # self.response_task = asyncio.create_task(receive_message_loop())
         
         self.command_queue.put((AudioCommand.START_AUDIO, None))
     
     def stop_audio(self):
         """Stop audio streaming in the audio process"""
-        
-        self.response_scheduler.stop_routs()
+        if not self.response_task:
+            self.response_task.cancel()
         
         self.command_queue.put((AudioCommand.STOP_AUDIO, None))
     
