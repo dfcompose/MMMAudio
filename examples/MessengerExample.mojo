@@ -1,4 +1,5 @@
 from mmm_audio import *
+# from std.random import random_si64
 
 struct Tone(Movable,Copyable):
     var world: World
@@ -107,7 +108,7 @@ struct MessengerExample(Copyable, Movable):
             
         # Send a new message out every 4 seconds
         if self.counter % (self.world[].sample_rate * 4) == 0:
-            self.m.send_string("string_from_mojo", "Hello World!")
+            self.m.send_string("string_from_mojo", ["Hello World!", "nihao shijie", "My life for aiur"][random_si64(0,2)])
         
         self.counter += 1
 
