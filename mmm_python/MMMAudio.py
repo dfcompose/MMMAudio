@@ -83,7 +83,7 @@ class AudioCommand(IntEnum):
     GET_SAMPLES = 12
     UPDATE_MOUSE = 13  # New command for mouse updates
     SET_SCREEN_DIMS = 14  # New command for screen dimensions
-    POLL_MSGS = 15
+    RECV_MSG = 15
 
 class MMMAudio:
     """
@@ -332,6 +332,9 @@ class MMMAudio:
             while True:
                 if len(self.response_callbacks):
                     self.poll_incoming_msgs(list(self.response_callbacks))
+                    
+                    self.recv_msg(list(self.response_callbacks))
+                        # self.clear_out_msgs()
                 await asyncio.sleep(self.poll_rate)
         
         self.response_scheduler.start_thread()
@@ -456,12 +459,12 @@ class MMMAudio:
         self.response_callbacks[key] = callback
     
     
-    def poll_incoming_msgs(self, keys: list):
+    def recv_msg(self, keys: list):
         """
         Poll Mojo for outgoing messages. If a callback function is registered to a specific key, run that callback function for the incoming data.
         """
         
-        self.command_queue.put((AudioCommand.POLL_MSGS, (keys,)))
+        self.command_queue.put((AudioCommand.RECV_MSG, (keys,)))
         
         try:
             response = self.response_queue.get(timeout=30.0)
@@ -806,7 +809,7 @@ class MMMAudio:
                 return True
 
             
-            def handle_poll_incoming_msgs(args):
+            def handle_recv_msg(args):
                 keys = args[0]
                 
                 
@@ -841,7 +844,7 @@ class MMMAudio:
                 handle_get_samples,       # 12
                 handle_update_mouse,      # 13
                 handle_set_screen_dims,   # 14
-                handle_poll_incoming_msgs,          # 15
+                handle_recv_msg,          # 15
             ]
 
             # =========================================================================
