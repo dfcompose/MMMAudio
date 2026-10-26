@@ -54,7 +54,8 @@ def make_bridge_module(name: StaticString) raises -> PythonObject:
         .def_method[Bridge.update_trigs_msg]("update_trigs_msg")
         .def_method[Bridge.update_string_msg]("update_string_msg")
         .def_method[Bridge.update_strings_msg]("update_strings_msg")
-        .def_method[Bridge.query_float_msgs]("recv_msg")
+        .def_method[Bridge.query_float_msgs]("query_float_msgs")
+        .def_method[Bridge.query_int_msgs]("query_int_msgs")
     return m.finalize()
 
 
@@ -504,18 +505,44 @@ struct MMMAudioBridge(Movable, Writable):
 
         return PythonObject(None)
 
+    # =======================================================================
+    # Message out methods
+    # =======================================================================
 
     @staticmethod
     def query_float_msgs(py_selfA: PythonObject, key: PythonObject, container: PythonObject) raises -> PythonObject:
         var py_self = py_selfA.downcast_value_ptr[Self]()
-        var pool = py_self[].environment_ptr[].out_messenger_manager._get_messages[Float64](String(py=key))
-        
-        if pool:
-            for val in pool.value():
+        # py_self[].environment_ptr[].out_messenger_manager.transfer_msgs()
+        var opt = py_self[].environment_ptr[].out_messenger_manager._get_messages[Float64](String(py=key))
+        var cast_key = String(py=key)
+        if opt:
+            for val in opt.value():
                 container.append(val)
 
         return PythonObject(None)
 
+    @staticmethod
+    def query_int_msgs(py_selfA: PythonObject, key: PythonObject, container: PythonObject) raises -> PythonObject:
+        var py_self = py_selfA.downcast_value_ptr[Self]()
+        # py_self[].environment_ptr[].out_messenger_manager.transfer_msgs()
+        var opt = py_self[].environment_ptr[].out_messenger_manager._get_messages[Int](String(py=key))
+        var cast_key = String(py=key)
+        
+        if opt:
+            for val in opt.value():
+                container.append(val)
+
+        return PythonObject(None)
+
+    @staticmethod
+    def test_method(py_selfA: PythonObject) raises -> PythonObject:
+        """
+        Empties message dicts. Must be called after receiving data
+        """
+        # var py_self = py_selfA.downcast_value_ptr[Self]()
+        # py_self[].environment_ptr[].out_messenger_manager.empty_msg_dicts()
+        print("clearing")
+        return PythonObject(None)
 
     def get_audio_samples(mut self, loc_in_buffer: MutPointer[Float32, ...], mut loc_out_buffer: MutPointer[Float64, ...]) raises:
         # The per-sample loop lives in the graph's library (see GraphBlock),
@@ -535,6 +562,7 @@ struct MMMAudioBridge(Movable, Writable):
         if self.audio_state_ptr[].pools.try_acquire():
             try:
                 self.environment_ptr[].messenger_manager.transfer_msgs()
+                self.environment_ptr[].out_messenger_manager.transfer_msgs()
             finally:
                 self.audio_state_ptr[].pools.release()
 
@@ -635,6 +663,7 @@ struct MMMAudioBridge(Movable, Writable):
             py_self[].audio_state_ptr[].pools.acquire()
             try:
                 py_self[].environment_ptr[].messenger_manager.transfer_msgs()
+                py_self[].environment_ptr[].out_messenger_manager.transfer_msgs()
             finally:
                 py_self[].audio_state_ptr[].pools.release()
 

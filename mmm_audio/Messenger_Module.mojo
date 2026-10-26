@@ -286,6 +286,7 @@ struct Messenger(Copyable, Movable):
     def send_float(mut self, key: String, val: Float64):
         self._out_messenger_manager[].update_float_msg(key, val)
         
+        
     def send_floats(mut self, key: String, vals: List[Float64]):
         # Not sure if this needs to be a copy here, but I think it does initially
         self._out_messenger_manager[].update_floats_msg(key, vals.copy())
@@ -312,7 +313,9 @@ struct Messenger(Copyable, Movable):
         self._out_messenger_manager[].update_trig_msg(key)
         pass
 
-
+    def transfer_out_messages(self) raises:
+        if self._top_of_block[]:
+            self._out_messenger_manager[].transfer_msgs()
 
 @doc_hidden
 struct Message[T: Copyable & Deinitable](Movable, Copyable):

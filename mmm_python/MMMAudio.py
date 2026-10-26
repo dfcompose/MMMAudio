@@ -82,6 +82,7 @@ class AudioCommand(IntEnum):
     UPDATE_MOUSE = 13  # New command for mouse updates
     SET_SCREEN_DIMS = 14  # New command for screen dimensions
     RECV_MSG = 15
+    CLEAR_MSGS = 16
 
 class MMMAudio:
     """
@@ -320,17 +321,23 @@ class MMMAudio:
     
     def start_audio(self):
         """Start audio streaming in the audio process"""
+        from mmm_python import Scheduler
         
         if self.response_task:
             self.response_task.cancel()
+        
+        sched = Scheduler()
         
         async def receive_message_loop():
             while True:
                 if len(self.response_callbacks):
                     for key in self.response_callbacks:
                         self.recv_msg(key)
-                await asyncio.sleep(0.01)
-        self.response_task = asyncio.create_task(receive_message_loop())
+                        # self.clear_out_msgs()
+                await asyncio.sleep(0.1)
+        sched.start_thread()
+        sched.sched(receive_message_loop())
+        # self.response_task = asyncio.create_task(receive_message_loop())
         
         self.command_queue.put((AudioCommand.START_AUDIO, None))
     
@@ -450,13 +457,16 @@ class MMMAudio:
         
         try:
             response = self.response_queue.get(timeout=30.0)
-            if response[0] == "FLOAT":
+            if response[0] == "FLOAT" or response[0] == "INT":
                 key = response[1][0]
                 for val in response[1][1]:
                     self.response_callbacks[key](val)
         except Exception as e:
             print("Something went wrong")
         
+    def clear_out_msgs(self):
+        self.command_queue.put((AudioCommand.CLEAR_MSGS, (None,)))
+        # print("this should clear")
     
     # =========================================================================
     # Methods that need response from audio process
@@ -789,14 +799,20 @@ class MMMAudio:
             
             def handle_recv_msg(args):
                 key= args[0]
-                msg = []
+                float_msgs = []
+                int_msgs = []
                 
-                mmm_audio_bridge.recv_msg(key, msg)
-                response_queue.put(("FLOAT", (key, msg)))
+                mmm_audio_bridge.query_float_msgs(key, float_msgs)
+                response_queue.put(("FLOAT", (key, float_msgs)))
+                mmm_audio_bridge.query_int_msgs(key, int_msgs)
+                response_queue.put(("INT", (key, int_msgs)))
                     # callback(test)
                 
                 return True
             
+            def handle_clear_msgs(args):
+                mmm_audio_bridge.clear_out_msgs()
+                
             command_handlers = [
                 handle_stop_process,      # 0
                 handle_start_audio,       # 1
@@ -813,7 +829,8 @@ class MMMAudio:
                 handle_get_samples,       # 12
                 handle_update_mouse,      # 13
                 handle_set_screen_dims,   # 14
-                handle_recv_msg           # 15
+                handle_recv_msg,          # 15
+                handle_clear_msgs         # 16
             ]
 
             # =========================================================================
