@@ -747,7 +747,7 @@ struct MMMAudioBridge(Movable, Writable):
         if container:
             return PythonObject(None)
         
-        _ = py_selfA.query_trig_msgs(key)
+        _ = py_selfA.query_trig_msgs(key, container)
 
         return PythonObject(None)
 
