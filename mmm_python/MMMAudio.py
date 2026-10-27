@@ -168,6 +168,7 @@ class MMMAudio:
         
         from mmm_python import Scheduler
         self.response_callbacks = {}
+        self.response_key_flags = []
         self.response_scheduler = Scheduler()
         self.poll_rate = 0.01
 
@@ -451,20 +452,44 @@ class MMMAudio:
     # =========================================================================
     
     
-    def register_response_callback(self, key: str, callback):
+    def register_response_callback(self, key: str, callback, data_flag: str):
         """
         Register a callback function when Python receives a message from Mojo on a specific address. 
+        
+        Arguments:
+            key: The key that the message is sent to.
+            callback: A callback function to be ran when a message is received on the specified key.
+            data_flag: The data type of the incoming data. Options are:
+                int, ints, float, floats, bool, bools, string, strings, trig
+        
         """
         
-        self.response_callbacks[key] = callback
+        self.response_callbacks[key] = [callback, data_flag]
+        
+        self.response_key_flags = [[], []]
+                        
+        for key in list(self.response_callbacks):
+            self.response_key_flags[0].append(key)
+            self.response_key_flags[1].append(self.response_callbacks[key][1])
     
+    def deregister_response_callback(self, key: str):
+        """
+        Remove a callback.
+        """
+        self.response_callbacks.pop(key, None)
+        
+        self.response_key_flags = [[], []]
+                
+        for key in list(self.response_callbacks):
+            self.response_key_flags[0].append(key)
+            self.response_key_flags[1].append(self.response_callbacks[key][1])
     
     def poll_incoming_msgs(self, keys: list):
         """
         Poll Mojo for outgoing messages. If a callback function is registered to a specific key, run that callback function for the incoming data.
         """
         
-        self.command_queue.put((AudioCommand.POLL_MSGS, (keys,)))
+        self.command_queue.put((AudioCommand.POLL_MSGS, (self.response_key_flags[0], self.response_key_flags[1])))
         
         try:
             response = self.response_queue.get(timeout=30.0)
@@ -474,7 +499,7 @@ class MMMAudio:
                 
                 if vals:
                     
-                    self.response_callbacks[key](vals)
+                    self.response_callbacks[key][0](vals)
                 
         except Exception as e:
             print("Something went wrong")
@@ -810,15 +835,16 @@ class MMMAudio:
 
             
             def handle_poll_incoming_msgs(args):
-                keys = args[0]
+                keys, flags = args
+                
                 
                 
                 mmm_audio_bridge.get_out_messages()
                 
                 
-                for key in keys:
+                for i, key in enumerate(keys):
                     msg = []
-                    mmm_audio_bridge.receive_messages(key, msg)
+                    mmm_audio_bridge.receive_messages(key, msg, flags[i])
                     
                     response_queue.put(("MSG_RECEIVED", (key, msg)))
                     

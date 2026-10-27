@@ -67,9 +67,9 @@ def mojo_callback(vals):
     val = vals[0]
     print("Mojo says: " + val)
 
-a.register_response_callback("list_from_mojo", list_mojo_callback)
+a.register_response_callback("list_from_mojo", list_mojo_callback, "floats")
 
-a.register_response_callback("string_from_mojo", mojo_callback)
+a.register_response_callback("string_from_mojo", mojo_callback, "string")
 
 
 a.stop_audio()

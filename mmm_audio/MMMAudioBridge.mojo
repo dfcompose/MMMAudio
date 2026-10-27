@@ -711,43 +711,30 @@ struct MMMAudioBridge(Movable, Writable):
     
 
     @staticmethod
-    def query_msgs_by_key(py_selfA: PythonObject, key: PythonObject, container: PythonObject) raises -> PythonObject:
+    def query_msgs_by_key(py_selfA: PythonObject, key: PythonObject, container: PythonObject, data_flag: PythonObject) raises -> PythonObject:
         """
         Query all messenger manager pools by key. Early return when key matched.
         """
-        _ = py_selfA.query_int_msgs(key, container)
-        if container:
-            return PythonObject(None) 
-
-        _ = py_selfA.query_float_msgs(key, container)
-        if container:
-            return PythonObject(None)
-
-        _ = py_selfA.query_string_msgs(key, container)
-        if container:
-            return PythonObject(None)
-
-        _ = py_selfA.query_bool_msgs(key, container)
-        if container:
-            return PythonObject(None)
-
-        _ = py_selfA.query_ints_msgs(key, container)
-        if container:
-            return PythonObject(None) 
-
-        _ = py_selfA.query_floats_msgs(key, container)
-        if container:
-            return PythonObject(None)
-
-        _ = py_selfA.query_strings_msgs(key, container)
-        if container:
-            return PythonObject(None)
-
-        _ = py_selfA.query_bools_msgs(key, container)
-        if container:
-            return PythonObject(None)
+        var flag = String(py=data_flag)
         
-        _ = py_selfA.query_trig_msgs(key, container)
+        if flag == "int":
+            _ = py_selfA.query_int_msgs(key, container)
+        elif flag == "ints": 
+            _ = py_selfA.query_ints_msgs(key, container)
+        elif flag == "float":
+            _ = py_selfA.query_float_msgs(key, container)
+        elif flag == "floats":
+            _ = py_selfA.query_floats_msgs(key, container)
+        elif flag == "string":
+            _ = py_selfA.query_string_msgs(key, container)
+        elif flag == "strings":
+            _ = py_selfA.query_strings_msgs(key, container)
+        elif flag == "bool":
+            _ = py_selfA.query_bool_msgs(key, container)
+        elif flag == "bools":
+            _ = py_selfA.query_bools_msgs(key, container)
+        elif flag == "trig":
+            _ = py_selfA.query_trig_msgs(key, container)
 
         return PythonObject(None)
 
